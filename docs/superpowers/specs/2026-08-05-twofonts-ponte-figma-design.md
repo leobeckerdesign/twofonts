@@ -74,14 +74,15 @@ Cada bloco de texto carrega:
 
 - `text`: literal ou com tokens (abaixo)
 - `scale`: multiplicador sobre a base do card para o papel do bloco, padrão 1
-- `mt`: sobrescrita da margem superior em px
+- `mt` e `mb`: sobrescrita das margens superior e inferior em px
 - `caps`, `tracking`, `opacity`, `num`: derivados do nó do Figma, nunca do nome
 
-`mt` só é gravado quando o espaço medido no Figma **diverge** do que o CSS já dá
-para aquele par de irmãos (14px depois de `.p`, 12px entre `.t` irmãos, 4px dentro
-de `stack`, 15px em volta de `rule`, 0 para `eyebrow`). Divergência menor que 1px é
-ruído de arredondamento e é ignorada. Assim o spec fica enxuto e o CSS continua
-sendo o padrão, com o Figma sobrescrevendo só onde o Leo mexeu de propósito.
+`mt` e `mb` vêm de `paddingTop` e `paddingBottom` do frame do bloco, lidos direto,
+sem inferência. Só são gravados quando **divergem** do que o CSS já dá para aquele
+tipo de bloco (14px acima de `.p`, 12px entre `.t` irmãos, 4px dentro de `stack`,
+15px acima e abaixo de `rule`, 14px abaixo de `label`, 0 para `eyebrow`). Assim o
+spec fica enxuto e o CSS continua sendo o padrão, com o Figma sobrescrevendo só
+onde o Leo mexeu de propósito.
 
 Caixas carregam `family` (id da família de shader), `ratio` ou `h`, e `bleed`.
 
@@ -168,13 +169,57 @@ declarada.
 
 ### Posicionamento
 
-Card em **posição absoluta**, não auto-layout. Motivo: os espaçamentos entre blocos
-não são uniformes (14px depois de `.p`, 12px entre `.t` irmãos, 4px dentro de
-`.wf`, 15px em volta de `.rule`), e o auto-layout do Figma só tem espaçamento
-único por contêiner. Absoluto dá fidelidade agora e liberdade total depois: o Leo
-arrasta o que quiser e a importação lê a posição resultante.
+**Auto-layout do card até a folha.** O card precisa refluir: com centenas de
+famílias, a mesma string no mesmo corpo tem largura diferente em cada fonte, o
+número de linhas muda e a altura do card muda junto. Posição absoluta faria um
+título longo passar por cima do bloco de baixo, e o Leo estaria desenhando contra
+uma composição que o navegador nunca vai produzir.
 
-Contêineres (`rows`, `meta`, `split`, `stack`) usam auto-layout internamente,
+Auto-layout também é melhor **na volta**. Sem ele, a importação teria que inferir
+espaçamento subtraindo bounding boxes, e a caixa de um nó de texto no Figma inclui
+o leading da entrelinha, então o espaço medido nunca bate com a margem do CSS. Com
+auto-layout eu leio `paddingTop` como número, sem inferência.
+
+Os espaçamentos do CSS não são uniformes (0, 4, 6, 8, 9, 12, 14, 15 e 22 px) e o
+auto-layout do Figma só tem um `itemSpacing` por contêiner. A saída é estrutural:
+
+**Cada bloco é um frame nomeado.** Auto-layout vertical, `layoutSizingHorizontal`
+preenchendo, `layoutSizingVertical` abraçando, sem preenchimento de cor, e o
+espaçamento dele mora no próprio `paddingTop` e `paddingBottom`. O card tem
+`itemSpacing: 0` e não impõe espaçamento nenhum.
+
+Cada bloco carrega **as duas** margens dele, não só a de cima, porque `.card` é
+`display: flex` e em contêiner flex as margens **não colapsam**. Um `rule` com
+`margin: 15px 0` seguido de um `.p` com `margin-top: 14px` produz 29px de espaço
+no navegador, e o Figma tem que produzir os mesmos 29.
+
+```
+card/capa            frame, auto-layout vertical, itemSpacing 0
+├── label            paddingBottom 14,                paddingX 32
+├── title                                             paddingX 32
+├── rule             paddingTop 15, paddingBottom 15, paddingX 32
+├── body             paddingTop 14,                   paddingX 32
+└── body             paddingTop 22,                   paddingX 32
+```
+
+Espaços resultantes: 14 entre rótulo e título, 15 entre título e filete, 29 entre
+filete e corpo, 22 entre os dois corpos. Igual ao navegador.
+
+Editar assim é melhor que editar texto solto: o painel de camadas mostra a lista de
+blocos nomeados, cada um um objeto que se arrasta, reordena e respaça pela própria
+UI do Figma.
+
+### Margem lateral e sangramento
+
+A margem lateral **sai do card e vai para os blocos**: card com padding 30 topo,
+0 laterais, 26 base; bloco comum com 32 nas laterais; bloco `bleed` com 0.
+
+Sangrar até a borda vira um número no bloco, não uma exceção no contrato, e volta
+lido direto de `paddingLeft`.
+
+### Contêineres
+
+`rows`, `meta`, `split` e `stack` seguem a mesma forma, com `itemSpacing` real,
 porque ali o espaçamento **é** uniforme.
 
 Os filhos de contêiner também têm nome no contrato:
@@ -236,6 +281,18 @@ aparecer.
 `palette: "card"` amarra o shader ao `kind` do card, então shader em card `accent`
 sai na paleta laranja sem ninguém especificar.
 
+### Banda ou fundo
+
+Uma caixa pode entrar de duas formas, e o auto-layout suporta as duas nativamente:
+
+- **Banda:** filho normal da pilha, ocupa uma faixa do card entre outros blocos.
+- **Fundo ou sobreposição:** filho com `layoutPositioning: "ABSOLUTE"`, que o
+  auto-layout tira do fluxo. Serve para shader atrás do texto, cobrindo o card
+  inteiro, ou para uma sobreposição por cima.
+
+As duas voltam sem ambiguidade, porque o Figma diz qual é qual. O spec grava
+`flow: "stack" | "absolute"` mais as âncoras de posição no caso absoluto.
+
 ### O limite de WebGL
 
 **18 contextos WebGL não é viável.** O Chrome descarta o contexto mais antigo por
@@ -248,7 +305,31 @@ limitada. Um contexto, um programa por família, N blits. É o que `background.t
 faz bem (30fps travado, DPR limitado a 1.15, pausa quando a aba some, fallback CSS
 em toda falha), multiplexado.
 
-Isso é engenharia própria e vira `src/media/shaders.ts`, fora do renderizador.
+Vira `src/media/shaders.ts`, fora do renderizador.
+
+### O contrato reservado agora
+
+O Leo confirmou que a camada WebGL é estrutural, não decorativa: o sistema final
+depende dela. Então o bloco de caixa já nasce carregando **tudo** que o motor vai
+precisar, mesmo antes de o motor existir. A fase 2 implementa, não renegocia.
+
+| Campo | Para quê |
+|---|---|
+| `kind` | `image`, `video` ou `shader` |
+| `family` | id da família de shader |
+| `flow` | `stack` ou `absolute` |
+| `ratio` / `h` | proporção ou altura fixa, na banda |
+| `inset` | âncoras topo/direita/base/esquerda, no absoluto |
+| `bleed` | ignora a margem lateral do card |
+| `motion` | `still` (imagem), `loop` (vídeo e shader) |
+| `blend` | modo de composição contra o card, lido do `blendMode` do nó |
+| `z` | ordem contra os blocos de texto, lida da ordem no Figma |
+| `params` | sobrescritas nomeadas das faixas da família, opcional |
+| `seed` | `auto` (derivado de card mais par) ou valor fixo |
+
+`params` e `seed` fixo existem para o dia em que um card específico precisar de um
+resultado exato em vez do sorteio. Não são usados nesta rodada, mas o campo estar
+reservado evita migrar o `layouts.json` depois.
 
 ## Escopo
 
@@ -265,9 +346,13 @@ Isso é engenharia própria e vira `src/media/shaders.ts`, fora do renderizador.
 
 ### Fora desta rodada
 
-O motor de shader. A ponte não depende dele existir: as caixas já viajam desde o
-primeiro dia, e o motor chega depois sem encostar no renderizador nem no contrato
-de nomes.
+O motor de shader, que é a fase 2. A ponte não depende dele existir: as caixas já
+viajam desde o primeiro dia com o contrato completo, e o motor chega depois sem
+encostar no renderizador nem no contrato de nomes.
+
+Isso não o torna secundário. Ele é estrutural no sistema final, e é justamente por
+isso que o contrato dele está fechado agora: a fase 2 escreve GL, não renegocia
+formato.
 
 ## Verificação
 
@@ -288,8 +373,15 @@ fluidez e ritmo não são verificáveis por aqui.
   texto lado a lado, agrupadas e nomeadas `columns`, e volta como um bloco só.
 - **Recolorir para um valor fora dos três `kind`** não tem para onde ir. Vira
   pendência no relatório, não erro silencioso.
-- **Reordenar blocos** funciona. **Aninhar um bloco dentro de outro** que não seja
-  contêiner conhecido não funciona, e vira pendência.
+- **Reordenar blocos** funciona, e com auto-layout é arrastar na lista de camadas.
+  **Aninhar um bloco dentro de outro** que não seja contêiner conhecido não
+  funciona, e vira pendência.
+- **Bloco de texto tirado do fluxo** (`layoutPositioning: "ABSOLUTE"`) não tem
+  semântica definida: absoluto só significa fundo ou sobreposição para caixas.
+  Texto absoluto vira pendência no relatório, não palpite.
+- **Quebrar o auto-layout do card** faz a importação cair para leitura de posição,
+  que é imprecisa por causa do leading. O relatório avisa quando isso acontece,
+  para o card ser reconstruído em vez de importado torto.
 
 ## Pendências abertas
 

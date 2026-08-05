@@ -13,3 +13,23 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 #hud { position: fixed; inset: auto 0 0 0; z-index: 2; display: flex; flex-direction: column;
   align-items: center; gap: 16px; padding: 24px; pointer-events: none; }
 #hud > * { pointer-events: auto; }
+
+.card { position: absolute; top: 0; left: 0; will-change: transform; user-select: none;
+  cursor: pointer; color: var(--ink); transition: color .2s ease; }
+.card:hover { color: var(--accent); }
+.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
+.card--dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+  transition: background-color .2s ease; }
+.card--dot:hover, .card--dot:focus-visible { background: var(--accent); }
+.card--name { font-size: 22px; white-space: nowrap; }
+.card--card { display: flex; flex-direction: column; gap: 6px; width: 260px; padding: 20px;
+  background: var(--card-bg); border: 1px solid var(--card-border); backdrop-filter: blur(6px); }
+.card__name { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  font-family: system-ui, sans-serif; }
+.card__sample { font-size: 40px; line-height: 1.1; }
+.card__meta { font-size: 11px; color: var(--muted); font-family: system-ui, sans-serif; }
+.card--active { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .card--dot { transition: none; }
+}

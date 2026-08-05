@@ -27,18 +27,27 @@ export function pairScore(headline: FontEntry, body: FontEntry, contrast: number
   return score;
 }
 
+/** Nunca devolve undefined (fail closed): pool filtrado > lista completa
+ *  menos exclude > melhor entrada do ranking geral, nessa ordem. */
 function pickTop(
   ranked: FontEntry[], exclude: Set<string>, rng: () => number,
 ): FontEntry {
-  const pool = ranked.filter((e) => !exclude.has(e.family)).slice(0, TOP_K);
-  return pool[Math.floor(rng() * pool.length)];
+  const filtered = ranked.filter((e) => !exclude.has(e.family));
+  const pool = filtered.slice(0, TOP_K);
+  if (pool.length > 0) return pool[Math.floor(rng() * pool.length)];
+  if (filtered.length > 0) return filtered[Math.floor(rng() * filtered.length)];
+  return ranked[0];
 }
 
 export function generatePair(
   db: FontDB, state: PairState, rng: () => number = Math.random,
 ): { a: string; b: string } {
-  const { a, b, lockA, lockB, contrast } = state;
-  if (lockA && lockB) return { a, b };
+  const { a, b, contrast } = state;
+  // Locks só valem se a família ainda existir no DB. PairState viaja pela
+  // URL (link compartilhado); se o catálogo mudou e a família sumiu, trata
+  // o slot como destravado em vez de lançar (fail closed).
+  const entryA = db.byFamily.get(a);
+  const entryB = db.byFamily.get(b);
 
   const chooseB = (fixedA: FontEntry, excludeB: string): string => {
     const ranked = [...db.entries]
@@ -51,10 +60,12 @@ export function generatePair(
     return pickTop(ranked, new Set([fixedB.family, excludeA]), rng).family;
   };
 
-  if (lockA) return { a, b: chooseB(db.byFamily.get(a)!, b) };
-  if (lockB) return { a: chooseA(db.byFamily.get(b)!, a), b };
+  if (state.lockA && entryA && state.lockB && entryB) return { a, b };
+  if (state.lockA && entryA) return { a, b: chooseB(entryA, b) };
+  if (state.lockB && entryB) return { a: chooseA(entryB, a), b };
 
-  // nada travado: sorteia a headline, escolhe o melhor corpo para ela
-  const newA = db.entries[Math.floor(rng() * db.entries.length)].family;
-  return { a: newA, b: chooseB(db.byFamily.get(newA)!, b) };
+  // nada travado (ou lock referenciava família ausente do DB): sorteia a
+  // headline, escolhe o melhor corpo para ela
+  const newAEntry = db.entries[Math.floor(rng() * db.entries.length)];
+  return { a: newAEntry.family, b: chooseB(newAEntry, b) };
 }

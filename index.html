@@ -3,25 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Mapa navegável do espaço latente de 1.807 fontes do Google Fonts." />
+  <meta name="theme-color" content="#0d0d0f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" href="/fonts-map.json" as="fetch" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <title>twofonts</title>
 </head>
 <body>
-  <canvas id="bg"></canvas>
-  <div id="viewport">
+  <canvas id="bg" aria-hidden="true"></canvas>
+  <div id="viewport" aria-label="Mapa navegável de famílias tipográficas">
     <div id="world">
-      <svg id="arc-layer" width="4000" height="4000"></svg>
+      <svg id="arc-layer" width="4000" height="4000" aria-hidden="true"></svg>
     </div>
   </div>
+  <div id="loading" role="status" aria-live="polite">carregando o mapa…</div>
   <aside id="hud">
     <div id="specimen">
-      <h1 id="spec-headline" contenteditable="true" spellcheck="false">Beleza é função</h1>
-      <p id="spec-body" contenteditable="true" spellcheck="false">O pareamento de fontes é o equilíbrio entre semelhança e contraste — formas que conversam sem competir.</p>
+      <h1 id="spec-headline" contenteditable="true" spellcheck="false" aria-label="Texto de demonstração editável">Beleza é função</h1>
+      <p id="spec-body">O pareamento de fontes é o equilíbrio entre semelhança e contraste — formas que conversam sem competir.</p>
     </div>
-    <div id="controls">
-      <button id="lock-a" aria-pressed="false" title="Travar headline">A</button>
-      <input id="contrast" type="range" min="0" max="1" step="0.01" value="0.5" />
-      <button id="lock-b" aria-pressed="false" title="Travar corpo">B</button>
-      <button id="generate">gerar</button>
+    <div id="controls" role="group" aria-label="Controles de pareamento">
+      <button id="lock-a" type="button" aria-pressed="false" title="Travar fonte da manchete">A</button>
+      <label for="contrast">harmonia</label>
+      <input id="contrast" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Contraste entre as fontes" />
+      <span aria-hidden="true">contraste</span>
+      <button id="lock-b" type="button" aria-pressed="false" title="Travar fonte do corpo">B</button>
+      <button id="generate" type="button">gerar <kbd>espaço</kbd></button>
     </div>
   </aside>
   <script type="module" src="/src/main.ts"></script>

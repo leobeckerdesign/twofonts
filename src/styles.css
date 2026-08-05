@@ -113,12 +113,15 @@ body {
 #shelf {
   display: flex; gap: 4px; padding: 10px 26px 14px;
   overflow-x: auto; scrollbar-width: none;
+  /* No toque, arrastar sobre o bloco rola a lista. */
+  -webkit-overflow-scrolling: touch; touch-action: pan-x;
+  cursor: ew-resize;
 }
 #shelf::-webkit-scrollbar { display: none; }
 
 .chip {
   flex: none; display: flex; flex-direction: column; gap: 7px;
-  width: 132px; padding: 12px 13px 10px;
+  padding: 12px 15px 10px;
   background: none; border: 1px solid transparent; color: var(--paper);
   font: inherit; text-align: left; cursor: pointer;
   transition: border-color .2s, background .2s;
@@ -128,9 +131,10 @@ body {
 .chip__samples { display: flex; gap: 10px; align-items: baseline; font-size: 30px; line-height: .95; }
 .chip__samples span { display: block; }
 .chip__samples span:last-child { opacity: .62; }
+/* Nome por extenso: o chip cresce com o conteúdo em vez de cortar. */
 .chip__names {
   font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chip.is-active .chip__names { color: var(--accent); }
 
@@ -143,7 +147,15 @@ body {
   border-top: 1px solid var(--line); background: var(--bg);
 }
 .dock__label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-#contrast { width: min(300px, 40vw); accent-color: var(--accent); }
+
+/* Dez marcações visíveis, alinhadas aos dez cortes reais do dado. */
+#contrast-wrap { position: relative; display: flex; flex-direction: column; gap: 3px; }
+#contrast { width: min(300px, 40vw); accent-color: var(--accent); margin: 0; }
+#contrast-ticks {
+  display: flex; justify-content: space-between;
+  padding: 0 6px; pointer-events: none;
+}
+#contrast-ticks i { width: 1px; height: 5px; background: var(--line); }
 #dock button {
   background: none; border: 1px solid var(--line); color: var(--muted);
   font: inherit; font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
@@ -170,8 +182,10 @@ body {
   #contrast { width: 46vw; }
   #hint { bottom: 218px; }
   #shelf-head, #shelf { padding-left: 16px; padding-right: 16px; }
-  .chip { width: 116px; }
+  /* Sem largura fixa: o chip acompanha o nome, que nunca pode ser cortado. */
+  .chip { padding: 10px 12px 8px; }
   .chip__samples { font-size: 26px; }
+  .chip__names { font-size: 8.5px; letter-spacing: .08em; }
 }
 
 @media (prefers-reduced-motion: reduce) {

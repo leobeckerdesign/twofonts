@@ -1,9 +1,13 @@
+import gsap from "gsap";
 import { loadFont } from "../fonts";
 import { weightFor } from "../pairs";
 import type { FontMeta, WeightRole } from "../types";
 
 /** Amostra mínima: o preview pede só estes glifos ao Google, poucos KB por fonte. */
 const SAMPLE = "Aa";
+/** Fração central onde o ponteiro não rola nada — sem isso a lista nunca para. */
+const DEAD_ZONE = 0.18;
+const MAX_SPEED = 15;
 
 export interface ShelfPair {
   a: FontMeta;
@@ -19,8 +23,53 @@ export class Shelf {
   onPick: ((pair: ShelfPair) => void) | null = null;
 
   private token = 0;
+  private speed = 0;
+  private wanted = 0;
+  private ticking = false;
 
-  constructor(private readonly root: HTMLElement) {}
+  constructor(private readonly root: HTMLElement) {
+    this.bindPointerScroll();
+  }
+
+  /**
+   * Rolagem pela posição do ponteiro: mouse à direita do centro corre para a
+   * direita, à esquerda para a esquerda, mais rápido quanto mais longe. No
+   * toque não se aplica — lá o próprio arraste nativo já rola o bloco.
+   */
+  private bindPointerScroll(): void {
+    if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    this.root.addEventListener("pointermove", (e) => {
+      const r = this.root.getBoundingClientRect();
+      if (r.width === 0) return;
+      const offset = (e.clientX - r.left) / r.width * 2 - 1;      // -1 .. 1
+      const magnitude = Math.abs(offset);
+      this.wanted = magnitude < DEAD_ZONE
+        ? 0
+        : Math.sign(offset) * ((magnitude - DEAD_ZONE) / (1 - DEAD_ZONE)) ** 2 * MAX_SPEED;
+      this.startTicker();
+    }, { passive: true });
+
+    this.root.addEventListener("pointerleave", () => { this.wanted = 0; });
+  }
+
+  private startTicker(): void {
+    if (this.ticking) return;
+    this.ticking = true;
+    gsap.ticker.add(this.step);
+  }
+
+  /** Aceleração suave; para de consumir frames quando a lista está parada. */
+  private step = (): void => {
+    this.speed += (this.wanted - this.speed) * 0.12;
+    if (Math.abs(this.speed) < 0.05 && this.wanted === 0) {
+      this.speed = 0;
+      this.ticking = false;
+      gsap.ticker.remove(this.step);
+      return;
+    }
+    this.root.scrollLeft += this.speed;
+  };
 
   render(pairs: ShelfPair[], active: { a: string; b: string }, roles: [WeightRole, WeightRole]): void {
     // Invalida previews em voo: trocar de faixa não pode pintar fonte da antiga.

@@ -4,6 +4,16 @@ interface Handlers {
   onCopyLink: () => void;
 }
 
+/** Dez marcações; o slider anda em inteiros e converte para 0..1 aqui. */
+export const CONTRAST_STEPS = 10;
+const LAST_STEP = CONTRAST_STEPS - 1;
+
+export const stepToContrast = (step: number): number =>
+  Math.min(1, Math.max(0, step / LAST_STEP));
+
+export const contrastToStep = (contrast: number): number =>
+  Math.round(Math.min(1, Math.max(0, contrast)) * LAST_STEP);
+
 function required<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Elemento obrigatório #${id} não encontrado.`);
@@ -22,10 +32,18 @@ export class Controls {
   private readonly nameB = required("name-b");
 
   bind(handlers: Handlers): void {
+    this.buildTicks();
     this.generate.addEventListener("click", handlers.onGenerate);
     this.share.addEventListener("click", handlers.onCopyLink);
+
+    // O slider anda em dez posições inteiras: sem isso, um micro toque gerava
+    // um par novo a cada centésimo.
+    let lastStep = Number(this.contrast.value);
     this.contrast.addEventListener("input", () => {
-      handlers.onContrast(Number(this.contrast.value));
+      const step = Number(this.contrast.value);
+      if (step === lastStep) return;
+      lastStep = step;
+      handlers.onContrast(stepToContrast(step));
     });
 
     addEventListener("keydown", (ev) => {
@@ -41,11 +59,18 @@ export class Controls {
   sync(a: string, b: string, contrast: number): void {
     this.nameA.textContent = a;
     this.nameB.textContent = b;
+    const step = contrastToStep(contrast);
     // Não mexe no slider enquanto o usuário o arrasta.
     if (document.activeElement !== this.contrast) {
-      this.contrast.value = String(contrast);
+      this.contrast.value = String(step);
     }
-    this.contrast.setAttribute("aria-valuetext", `${Math.round(contrast * 100)}% de contraste`);
+    this.contrast.setAttribute("aria-valuetext", `corte ${step + 1} de ${CONTRAST_STEPS}`);
+  }
+
+  private buildTicks(): void {
+    const ticks = document.getElementById("contrast-ticks");
+    if (!ticks || ticks.childElementCount > 0) return;
+    for (let i = 0; i < CONTRAST_STEPS; i++) ticks.appendChild(document.createElement("i"));
   }
 
   flash(message: string): void {

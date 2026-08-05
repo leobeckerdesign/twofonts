@@ -20,14 +20,22 @@ PAIRS_JSON = ROOT / "public" / "pairs.json"
 # Faixas do slider. Em cada uma, que papel cada lado do par assume — é aqui
 # que "contraste de peso" vira regra: harmonia usa dois regulares, contraste
 # máximo opõe bold e light.
+# Dez cortes: um por marcação do slider. O peso acompanha o corte — harmonia
+# usa dois regulares, o meio opõe bold a regular, o extremo bold a light.
 BUCKETS = [
-    (0.00, "regular", "regular"),
-    (0.17, "regular", "regular"),
-    (0.33, "bold",    "regular"),
-    (0.50, "bold",    "regular"),
-    (0.67, "bold",    "light"),
-    (0.83, "bold",    "light"),
-    (1.00, "bold",    "light"),
+    (round(i / 9, 3), *roles)
+    for i, roles in enumerate([
+        ("regular", "regular"),
+        ("regular", "regular"),
+        ("regular", "regular"),
+        ("bold", "regular"),
+        ("bold", "regular"),
+        ("bold", "regular"),
+        ("bold", "light"),
+        ("bold", "light"),
+        ("bold", "light"),
+        ("bold", "light"),
+    ])
 ]
 
 PAIRS_PER_BUCKET = 400

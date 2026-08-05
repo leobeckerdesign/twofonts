@@ -2,3 +2,4 @@
 pipeline/data/
 node_modules/
 dist/
+.superpowers/

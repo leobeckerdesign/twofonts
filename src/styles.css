@@ -1,0 +1,15 @@
+:root {
+  --bg: #0d0d0f; --ink: #ececec; --muted: #8a8a90; --accent: #f05524;
+  --card-bg: rgba(255, 255, 255, 0.04); --card-border: rgba(255, 255, 255, 0.10);
+}
+* { margin: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--ink);
+  font-family: system-ui, sans-serif; }
+#bg { position: fixed; inset: 0; z-index: 0; }
+#viewport { position: fixed; inset: 0; z-index: 1; overflow: hidden; cursor: grab; }
+#viewport:active { cursor: grabbing; }
+#world { position: absolute; width: 4000px; height: 4000px; transform-origin: 0 0; }
+#arc-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+#hud { position: fixed; inset: auto 0 0 0; z-index: 2; display: flex; flex-direction: column;
+  align-items: center; gap: 16px; padding: 24px; pointer-events: none; }
+#hud > * { pointer-events: auto; }

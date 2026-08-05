@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>twofonts</title>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div id="viewport">
+    <div id="world">
+      <svg id="arc-layer" width="4000" height="4000"></svg>
+    </div>
+  </div>
+  <aside id="hud">
+    <div id="specimen">
+      <h1 id="spec-headline" contenteditable="true" spellcheck="false">Beleza é função</h1>
+      <p id="spec-body" contenteditable="true" spellcheck="false">O pareamento de fontes é o equilíbrio entre semelhança e contraste — formas que conversam sem competir.</p>
+    </div>
+    <div id="controls">
+      <button id="lock-a" aria-pressed="false" title="Travar headline">A</button>
+      <input id="contrast" type="range" min="0" max="1" step="0.01" value="0.5" />
+      <button id="lock-b" aria-pressed="false" title="Travar corpo">B</button>
+      <button id="generate">gerar</button>
+    </div>
+  </aside>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

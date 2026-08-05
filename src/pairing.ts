@@ -27,16 +27,18 @@ export function pairScore(headline: FontEntry, body: FontEntry, contrast: number
   return score;
 }
 
-/** Nunca devolve undefined (fail closed): pool filtrado > lista completa
- *  menos exclude > melhor entrada do ranking geral, nessa ordem. */
+/** Nunca inventa fallback fora do exclude set: se o pool (top-K já
+ *  filtrado pelo exclude) se esgota, devolve undefined — nunca `ranked[0]`,
+ *  que ignoraria o próprio exclude (Finding: podia devolver a família
+ *  travada, gerando a === b). Quem chama decide o que fazer com undefined
+ *  (generatePair mantém o valor atual do slot). Nunca lança. */
 function pickTop(
   ranked: FontEntry[], exclude: Set<string>, rng: () => number,
-): FontEntry {
+): FontEntry | undefined {
   const filtered = ranked.filter((e) => !exclude.has(e.family));
   const pool = filtered.slice(0, TOP_K);
   if (pool.length > 0) return pool[Math.floor(rng() * pool.length)];
-  if (filtered.length > 0) return filtered[Math.floor(rng() * filtered.length)];
-  return ranked[0];
+  return undefined;
 }
 
 export function generatePair(
@@ -49,15 +51,22 @@ export function generatePair(
   const entryA = db.byFamily.get(a);
   const entryB = db.byFamily.get(b);
 
-  const chooseB = (fixedA: FontEntry, excludeB: string): string => {
+  // Invariante: o par devolvido nunca repete a mesma família nos dois slots,
+  // a menos que o DB tenha menos de 2 famílias utilizáveis (caso degenerado,
+  // fora de escopo). chooseA/chooseB sempre excluem a família do slot fixo
+  // do pool candidato; quando o pool se esgota, mantém o valor atual do
+  // slot (currentA/currentB) em vez de devolver algo fora do exclude set.
+  const chooseB = (fixedA: FontEntry, currentB: string): string => {
     const ranked = [...db.entries]
       .sort((p, q) => pairScore(fixedA, q, contrast) - pairScore(fixedA, p, contrast));
-    return pickTop(ranked, new Set([fixedA.family, excludeB]), rng).family;
+    const picked = pickTop(ranked, new Set([fixedA.family, currentB]), rng);
+    return picked ? picked.family : currentB;
   };
-  const chooseA = (fixedB: FontEntry, excludeA: string): string => {
+  const chooseA = (fixedB: FontEntry, currentA: string): string => {
     const ranked = [...db.entries]
       .sort((p, q) => pairScore(q, fixedB, contrast) - pairScore(p, fixedB, contrast));
-    return pickTop(ranked, new Set([fixedB.family, excludeA]), rng).family;
+    const picked = pickTop(ranked, new Set([fixedB.family, currentA]), rng);
+    return picked ? picked.family : currentA;
   };
 
   if (state.lockA && entryA && state.lockB && entryB) return { a, b };

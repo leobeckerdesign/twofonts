@@ -64,13 +64,14 @@ describe("generatePair", () => {
     expect(generatePair(db, s, () => 0)).toEqual(generatePair(db, s, () => 0));
   });
 
-  it("pool vazio após exclusão: não lança, cai para fallback (Finding 1)", () => {
+  it("pool vazio após exclusão: não lança, mantém o slot B atual em vez de repetir A (Finding 1)", () => {
     const tinyDb = indexFonts([F("Solo", [1, 1]), F("Only", [1, 1])]);
     const s = state({ a: "Solo", b: "Only", lockA: true });
     expect(() => generatePair(tinyDb, s, () => 0)).not.toThrow();
     const out = generatePair(tinyDb, s, () => 0);
     expect(out.a).toBe("Solo");
     expect(tinyDb.byFamily.has(out.b)).toBe(true);
+    expect(out.a).not.toBe(out.b);
   });
 
   it("lock aponta para família ausente do DB: degrada para destravado, não lança (Finding 2)", () => {
@@ -81,5 +82,17 @@ describe("generatePair", () => {
     expect(out.b).toBe("Igual");
     expect(out.a).not.toBe("Fantasma");
     expect(db.byFamily.has(out.a)).toBe(true);
+    expect(out.a).not.toBe(out.b);
+  });
+
+  it("DB com exatamente 2 famílias, uma travada: escolhe sempre a outra, nunca repete a travada", () => {
+    const twoDb = indexFonts([F("Um", [1, 0]), F("Dois", [0, 1])]);
+    const s = state({ a: "Um", b: "Dois", lockA: true });
+    for (const rngVal of [0, 0.5, 0.99]) {
+      const out = generatePair(twoDb, s, () => rngVal);
+      expect(out.a).toBe("Um");
+      expect(out.b).toBe("Dois");
+      expect(out.a).not.toBe(out.b);
+    }
   });
 });

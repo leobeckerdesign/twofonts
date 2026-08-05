@@ -26,13 +26,14 @@ Texto sempre em DOM (nunca WebGL) — tipografia crisp, real e selecionável é 
 
 ## Pipeline de dados (build time)
 
-Script executado uma vez (e re-executado a cada atualização de catálogo):
+**Implementado e executado em 2026-08-05** (`pipeline/`). Em vez de vendorizar o dataset de 2017 do fontjoy, regeneramos os embeddings do zero sobre o catálogo atual, replicando a metodologia original com encoder moderno:
 
-1. Vendorizar `fonts-vectors200.json` do repo fontjoy (1.883 variantes, vetores 200d, MIT)
-2. Validar cada fonte contra o catálogo atual do Google Fonts; descartar mortas
-3. Reduzir a 1 entrada por família (regular como âncora; demais pesos viram metadata)
-4. UMAP sobre os vetores 200d → coordenadas 2D normalizadas
-5. Emitir `fonts-map.json` (~200–400 KB): `{family, category, weights, vector200, x, y}`
+1. `fetch_catalog.py` — catálogo completo via `fonts.google.com/metadata/fonts` (sem API key); só famílias com subset latin → **1.817 famílias**
+2. `render_glyphs.py` — baixa o TTF regular de cada família e renderiza grade de glifos distintivos (`aeg` / `nRQ`) em 224×224, preto sobre branco (downloads paralelos, cache incremental) → **1.807 renderizadas** (10 sem glifos latinos, excluídas — fail closed)
+3. `extract_features.py` — DINOv2 ViT-S/14 como extractor fixo, GPU (RTX 5090) → 384 dims/família
+4. `build_map.py` — StandardScaler + PCA 200d + UMAP 2D normalizado → `public/fonts-map.json` (2,8 MB bruto; ~900 KB com gzip do servidor — otimização de quantização fica para depois se necessário)
+
+Validação: vizinhos por cosseno fazem sentido tipográfico (Inter→Figtree/Google Sans; Bebas Neue→Staatliches; Caveat→Kalam); pureza de categoria @5 = 75%.
 
 Runtime carrega esse único JSON; todo o resto é matemática local.
 
@@ -75,9 +76,9 @@ Runtime carrega esse único JSON; todo o resto é matemática local.
 
 Contas, salvar coleções, exportar CSS, regeneração de embeddings, mobile-first.
 
-## Trabalho futuro: atualizar o catálogo de fontes
+## Atualização de catálogo (já implementada — contexto histórico)
 
-A metodologia original do Jack000 é replicável e barata. Como foi feito:
+A metodologia original do Jack000, que replicamos acima com DINOv2 no lugar da CNN VGG-era:
 
 1. **Renderização:** cada fonte (cada variante/peso tratado como fonte separada, para o peso entrar no vetor) renderizada como imagem 224×224 com uma grade de letras tipograficamente distintivas (e, a, n…)
 2. **Extração:** imagem passa por CNN pré-treinada (Keras, extractor fixo — sem treino custom) → vetor de features

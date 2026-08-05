@@ -49,6 +49,22 @@ export function pickPair(
   return pool[Math.floor(normalized * pool.length)];
 }
 
+/** Representantes da faixa ativa — é o que a prateleira mostra. */
+export function pairsIn(data: PairsData, contrast: number, limit = 14): { a: FontMeta; b: FontMeta }[] {
+  const bucket = data.buckets[bucketFor(data, contrast)];
+  if (!bucket) return [];
+
+  const out: { a: FontMeta; b: FontMeta }[] = [];
+  for (const [i, j] of bucket.pairs) {
+    const a = data.fonts[i];
+    const b = data.fonts[j];
+    if (!a || !b) continue;
+    out.push({ a, b });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 export function fontByFamily(data: PairsData, family: string): FontMeta | undefined {
   return data.fonts.find((f) => f.f === family);
 }

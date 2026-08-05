@@ -5,9 +5,13 @@ const readyFaces = new Map<string, string>();
 const failedFaces = new Map<string, { family: string; retryAt: number }>();
 const RETRY_AFTER_MS = 30_000;
 const LOAD_TIMEOUT_MS = 8_000;
-export const MAX_CACHED_FONT_FAMILIES = 6;
-export const MAX_CACHED_FONT_FACES = 8;
-export const MAX_CONCURRENT_FONT_REQUESTS = 2;
+// A prateleira mantém dezenas de famílias vivas ao mesmo tempo, mas só em
+// subsets de duas letras (poucos KB cada). O orçamento acomoda isso; as duas
+// fontes do par ativo, que carregam o charset inteiro, ficam protegidas por
+// pinFontFamilies e nunca são despejadas.
+export const MAX_CACHED_FONT_FAMILIES = 48;
+export const MAX_CACHED_FONT_FACES = 64;
+export const MAX_CONCURRENT_FONT_REQUESTS = 3;
 
 export interface FontLoadOptions {
   signal?: AbortSignal;

@@ -2,10 +2,11 @@ import "./styles.css";
 import { initBackground } from "./background";
 import { Field } from "./field";
 import { loadFont, pinFontFamilies } from "./fonts";
-import { fontByFamily, loadPairs, pickPair, weightRoles } from "./pairs";
+import { fontByFamily, loadPairs, pairsIn, pickPair, weightRoles } from "./pairs";
 import { assignRoles } from "./roles";
 import type { AppState, PairsData } from "./types";
 import { Controls } from "./ui/controls";
+import { Shelf } from "./ui/shelf";
 import { decodeState, encodeState } from "./url-state";
 
 const loading = document.getElementById("loading")!;
@@ -46,6 +47,13 @@ async function boot(): Promise<void> {
 
   const field = new Field(fieldRoot);
   const controls = new Controls();
+  const shelf = new Shelf(document.getElementById("shelf")!);
+
+  shelf.onPick = (pair) => {
+    if (pair.a.f === state.a && pair.b.f === state.b) return;
+    state = { ...state, a: pair.a.f, b: pair.b.f };
+    apply(true);
+  };
 
   // Carrega só os pesos que os cards realmente pedem para este par.
   field.onFontsNeeded = (families) => {
@@ -67,11 +75,21 @@ async function boot(): Promise<void> {
     const b = fontByFamily(data, state.b);
     if (!a || !b) return;
 
-    const pair = { a, b, roles: weightRoles(data, state.contrast), contrast: state.contrast };
+    const roles = weightRoles(data, state.contrast);
+    const pair = { a, b, roles, contrast: state.contrast };
     if (animate) field.swap(pair);
     else field.setPair(pair);
 
     controls.sync(state.a, state.b, state.contrast);
+
+    // O gerar sorteia entre centenas de pares e a prateleira mostra poucos:
+    // sem isto o par ativo quase nunca estaria visível e o destaque não teria
+    // o que destacar. Ele entra na frente quando não veio naturalmente.
+    const visible = pairsIn(data, state.contrast);
+    if (!visible.some((p) => p.a.f === state.a && p.b.f === state.b)) {
+      visible.unshift({ a, b });
+    }
+    shelf.render(visible, { a: state.a, b: state.b }, roles);
     history.replaceState(null, "", `${location.pathname}?${encodeState(state)}`);
   };
 

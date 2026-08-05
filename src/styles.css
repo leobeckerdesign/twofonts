@@ -93,13 +93,46 @@ body {
 
 /* ---------- dica ---------- */
 #hint {
-  position: fixed; left: 50%; bottom: 96px; z-index: 18;
+  position: fixed; left: 50%; bottom: 190px; z-index: 18;
   transform: translateX(-50%);
   font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
   color: var(--muted); opacity: .7; pointer-events: none;
   transition: opacity .5s ease;
 }
 #hint.is-gone { opacity: 0; }
+
+/* ---------- prateleira ---------- */
+#shelf-wrap {
+  position: relative; z-index: 15; flex: none;
+  border-top: 1px solid var(--line); background: var(--bg);
+}
+#shelf-head {
+  padding: 12px 26px 0;
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted);
+}
+#shelf {
+  display: flex; gap: 4px; padding: 10px 26px 14px;
+  overflow-x: auto; scrollbar-width: none;
+}
+#shelf::-webkit-scrollbar { display: none; }
+
+.chip {
+  flex: none; display: flex; flex-direction: column; gap: 7px;
+  width: 132px; padding: 12px 13px 10px;
+  background: none; border: 1px solid transparent; color: var(--paper);
+  font: inherit; text-align: left; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.chip:hover, .chip:focus-visible { border-color: var(--line); background: rgba(233, 229, 221, .04); }
+.chip.is-active { border-color: var(--accent); }
+.chip__samples { display: flex; gap: 10px; align-items: baseline; font-size: 30px; line-height: .95; }
+.chip__samples span { display: block; }
+.chip__samples span:last-child { opacity: .62; }
+.chip__names {
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chip.is-active .chip__names { color: var(--accent); }
 
 /* ---------- dock ---------- */
 #dock {
@@ -135,7 +168,10 @@ body {
   #pair-meta { font-size: 9px; }
   #dock { gap: 12px; padding: 12px 16px; }
   #contrast { width: 46vw; }
-  #hint { bottom: 124px; }
+  #hint { bottom: 218px; }
+  #shelf-head, #shelf { padding-left: 16px; padding-right: 16px; }
+  .chip { width: 116px; }
+  .chip__samples { font-size: 26px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

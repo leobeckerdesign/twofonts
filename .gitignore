@@ -1,0 +1,4 @@
+.venv/
+pipeline/data/
+node_modules/
+dist/

@@ -16,6 +16,9 @@ IMG_SIZE = 224
 
 METADATA_URL = "https://fonts.google.com/metadata/fonts"
 CSS2_URL = "https://fonts.googleapis.com/css2?family={family}"
+# Cada peso é uma fonte separada, como no fontjoy original — assim o peso
+# entra no vetor em vez de ser perdido na média da família.
+CSS2_WEIGHT_URL = "https://fonts.googleapis.com/css2?family={family}:wght@{weight}"
 
 for d in (DATA, FONTS_DIR, RENDERS_DIR, OUTPUT_JSON.parent):
     d.mkdir(parents=True, exist_ok=True)

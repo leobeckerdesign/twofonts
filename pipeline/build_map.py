@@ -10,6 +10,26 @@ from render_glyphs import slug
 
 PCA_DIMS = 200
 
+# Corte de pesos: só light, regular e bold. Cada papel tem uma FAIXA, não só um
+# alvo — sem isso o "light" de uma família que começa no 400 acabava sendo o
+# próprio regular, e o regular escorregava para 500.
+WEIGHT_BANDS = {
+    "light":   (100, 350, 300),
+    "regular": (351, 550, 400),
+    "bold":    (600, 1000, 700),
+}
+
+
+def selected_weights(available: list[int]) -> dict[int, str]:
+    """Mapeia peso escolhido -> papel. Papel sem peso na faixa simplesmente não existe."""
+    chosen: dict[int, str] = {}
+    for role, (lo, hi, target) in WEIGHT_BANDS.items():
+        pool = [w for w in available if lo <= w <= hi and w not in chosen]
+        if not pool:
+            continue
+        chosen[min(pool, key=lambda w: (abs(w - target), w))] = role
+    return chosen
+
 
 def main():
     data = np.load(FEATURES_NPZ)  # arrays numéricos + unicode; sem pickle
@@ -20,27 +40,34 @@ def main():
     n_dims = min(PCA_DIMS, *scaled.shape)
     vecs = PCA(n_components=n_dims, random_state=42).fit_transform(scaled)
 
-    import umap  # import tardio: umap-learn é lento para carregar
-
-    xy = umap.UMAP(n_neighbors=15, min_dist=0.1, random_state=42).fit_transform(vecs)
-    xy = (xy - xy.min(axis=0)) / (xy.max(axis=0) - xy.min(axis=0))
+    # Papel de cada variante decidido por família, antes de varrer os slugs.
+    roles = {
+        s: selected_weights(f["weights"])
+        for s, f in catalog.items()
+    }
 
     entries = []
     for i, s in enumerate(slugs):
-        fam = catalog.get(s)
-        if not fam:
+        # slug da variante = "<familia>-<peso>"; separa pelo último hífen
+        base, _, weight = str(s).rpartition("-")
+        fam = catalog.get(base)
+        if not fam or not weight.isdigit():
             continue
+        role = roles.get(base, {}).get(int(weight))
+        if role is None:
+            continue          # peso fora do corte light/regular/bold
         entries.append({
             "family": fam["family"],
+            "weight": int(weight),
+            "role": role,
             "category": fam["category"],
-            "weights": fam["weights"],
             "v": [round(float(v), 3) for v in vecs[i]],
-            "x": round(float(xy[i][0]), 4),
-            "y": round(float(xy[i][1]), 4),
         })
+
     OUTPUT_JSON.write_text(json.dumps(entries, ensure_ascii=False))
     kb = OUTPUT_JSON.stat().st_size / 1024
-    print(f"{len(entries)} familias, {n_dims} dims -> {OUTPUT_JSON} ({kb:.0f} KB)")
+    fams = len({e["family"] for e in entries})
+    print(f"{len(entries)} variantes de {fams} familias, {n_dims} dims -> {OUTPUT_JSON} ({kb:.0f} KB)")
 
 
 if __name__ == "__main__":

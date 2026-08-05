@@ -14,7 +14,9 @@ from fontTools.ttLib import TTFont
 from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
 
-from common import CATALOG_JSON, CSS2_URL, FONTS_DIR, GLYPH_ROWS, IMG_SIZE, RENDERS_DIR
+from common import (
+    CATALOG_JSON, CSS2_WEIGHT_URL, FONTS_DIR, GLYPH_ROWS, IMG_SIZE, RENDERS_DIR,
+)
 
 # Sem User-Agent moderno o css2 responde com format('truetype') em vez de woff2
 HEADERS = {"User-Agent": "python-requests"}
@@ -27,11 +29,18 @@ def slug(family: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-").lower()
 
 
-def download_ttf(family: str) -> "Path | None":
-    path = FONTS_DIR / f"{slug(family)}.ttf"
+def download_ttf(family: str, weight: int) -> "Path | None":
+    path = FONTS_DIR / f"{slug(family)}-{weight}.ttf"
     if path.exists():
         return path
-    url = CSS2_URL.format(family=family.replace(" ", "+"))
+    # A primeira execução baixou só o peso padrão, sem sufixo. Reaproveita esse
+    # arquivo para o 400 em vez de rebaixar 1.800 fontes.
+    legacy = FONTS_DIR / f"{slug(family)}.ttf"
+    if weight == 400 and legacy.exists():
+        path.write_bytes(legacy.read_bytes())
+        return path
+
+    url = CSS2_WEIGHT_URL.format(family=family.replace(" ", "+"), weight=weight)
     try:
         css = requests.get(url, headers=HEADERS, timeout=30)
         css.raise_for_status()
@@ -81,33 +90,51 @@ def render(path, out):
     img.save(out)
 
 
-def process(fam) -> str | None:
-    """Baixa e renderiza uma família; retorna o nome se falhou."""
-    name = fam["family"]
-    out = RENDERS_DIR / f"{slug(name)}.png"
+def process(variant) -> str | None:
+    """Baixa e renderiza UMA variante (família + peso); devolve o id se falhou."""
+    name, weight = variant
+    vid = f"{slug(name)}-{weight}"
+    out = RENDERS_DIR / f"{vid}.png"
     if out.exists():
         return None
-    ttf = download_ttf(name)
+
+    legacy = RENDERS_DIR / f"{slug(name)}.png"
+    if weight == 400 and legacy.exists():
+        out.write_bytes(legacy.read_bytes())
+        return None
+
+    ttf = download_ttf(name, weight)
     if ttf is None or not has_glyphs(ttf):
-        return name
+        return vid
     try:
         render(ttf, out)
         return None
     except Exception:
-        return name
+        return vid
 
 
 def main():
     from concurrent.futures import ThreadPoolExecutor
 
     catalog = json.loads(CATALOG_JSON.read_text())
+    variants = [(f["family"], w) for f in catalog for w in f["weights"]]
+    print(f"{len(catalog)} familias -> {len(variants)} variantes")
+
     with ThreadPoolExecutor(max_workers=8) as pool:
-        results = list(tqdm(pool.map(process, catalog), total=len(catalog), desc="render"))
+        results = list(tqdm(pool.map(process, variants), total=len(variants), desc="render"))
+
     skipped = [r for r in results if r]
-    ok = len(catalog) - len(skipped)
-    print(f"renderizadas: {ok} | puladas: {len(skipped)}")
+    print(f"renderizadas: {len(variants) - len(skipped)} | puladas: {len(skipped)}")
     if skipped:
         (RENDERS_DIR.parent / "skipped.json").write_text(json.dumps(skipped, indent=1))
+
+    # Os PNGs antigos sem sufixo de peso virariam entradas fantasma no glob da
+    # extração — já foram copiados para o nome novo acima.
+    stale = [p for p in RENDERS_DIR.glob("*.png") if not re.search(r"-\d+$", p.stem)]
+    for p in stale:
+        p.unlink()
+    if stale:
+        print(f"removidos {len(stale)} renders sem peso (nomenclatura antiga)")
 
 
 if __name__ == "__main__":

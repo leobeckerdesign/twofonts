@@ -26,6 +26,12 @@ def main(limit: int | None = None):
             "family": fam["family"],
             "category": fam.get("category", ""),
             "weights": weights,
+            # Sinais de curadoria: popularity é o ranking do Google (1 = mais
+            # usada); isNoto marca as centenas de Noto <script> com latino
+            # idêntico; primaryScript revela fontes cujo latino é só fallback.
+            "popularity": fam.get("popularity"),
+            "isNoto": bool(fam.get("isNoto")),
+            "primaryScript": fam.get("primaryScript") or "",
         })
     if limit:
         families = families[:limit]

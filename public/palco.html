@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>twofonts — protótipo do palco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Playfair+Display:wght@700&family=Fraunces:opsz,wght@9..144,700&family=Instrument+Serif&family=Syne:wght@700&family=DM+Serif+Display&family=Bricolage+Grotesque:wght@700&family=Inter:wght@400&family=IBM+Plex+Sans:wght@400&family=Manrope:wght@400&family=DM+Sans:wght@400&family=Work+Sans:wght@400&family=Source+Serif+4:wght@400&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #0c0c0e;
+  --ink: #ece9e4;
+  --muted: #86837d;
+  --line: rgba(236, 233, 228, 0.14);
+  --accent: #f05524;
+  --shelf-bg: rgba(236, 233, 228, 0.03);
+}
+:root[data-theme="light"] {
+  --bg: #f4f2ee;
+  --ink: #16150f;
+  --muted: #6f6c64;
+  --line: rgba(22, 21, 15, 0.16);
+  --accent: #d8410f;
+  --shelf-bg: rgba(22, 21, 15, 0.025);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: background .5s ease, color .5s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- topo ---------- */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 32px; font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted); flex: none;
+}
+.topbar b { color: var(--ink); font-weight: 500; letter-spacing: .22em; }
+.ghost {
+  background: none; border: 1px solid var(--line); color: var(--muted);
+  font: inherit; font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  padding: 7px 13px; cursor: pointer; transition: .2s;
+}
+.ghost:hover { color: var(--ink); border-color: var(--ink); }
+
+/* ---------- palco ---------- */
+.stage {
+  flex: 1; display: flex; flex-direction: column; justify-content: center;
+  padding: 0 clamp(32px, 8vw, 132px); min-height: 0;
+}
+.headline {
+  font-size: clamp(46px, 7.4vw, 108px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  max-width: 16ch;
+  outline: none;
+  transition: opacity .3s ease;
+}
+.rule { height: 1px; background: var(--line); margin: clamp(26px, 3.4vw, 44px) 0; max-width: 620px; }
+.body {
+  font-size: clamp(15px, 1.32vw, 19px);
+  line-height: 1.62;
+  max-width: 58ch;
+  color: color-mix(in srgb, var(--ink) 84%, transparent);
+  outline: none;
+}
+.signature {
+  display: flex; gap: 40px; margin-top: clamp(30px, 4vw, 56px);
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted);
+}
+.signature span b { color: var(--ink); font-weight: 500; }
+.signature span { cursor: pointer; padding-bottom: 4px; border-bottom: 1px solid transparent; transition: .2s; }
+.signature span:hover { color: var(--ink); }
+.signature span.on { border-bottom-color: var(--accent); color: var(--ink); }
+
+/* ---------- prateleira ---------- */
+.shelf-wrap { flex: none; border-top: 1px solid var(--line); background: var(--shelf-bg); }
+.shelf-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 32px 0; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted);
+}
+.shelf-head .slot { color: var(--accent); }
+.shelf { display: flex; gap: 6px; padding: 12px 32px 20px; overflow-x: auto; scrollbar-width: none; }
+.shelf::-webkit-scrollbar { display: none; }
+.cand {
+  flex: none; width: 138px; padding: 16px 16px 13px;
+  border: 1px solid transparent; background: none; color: var(--ink);
+  cursor: pointer; text-align: left; transition: border-color .2s, background .2s;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.cand:hover { border-color: var(--line); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.cand.on { border-color: var(--accent); }
+.cand .aa { font-size: 38px; line-height: .95; }
+.cand .nm { font-family: "IBM Plex Mono", monospace; font-size: 9px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cand.on .nm { color: var(--accent); }
+
+/* ---------- controles ---------- */
+.controls {
+  flex: none; display: flex; align-items: center; justify-content: center; gap: 22px;
+  padding: 15px 32px 22px; border-top: 1px solid var(--line);
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+}
+.lock { background: none; border: 1px solid var(--line); color: var(--muted); font: inherit;
+  font-size: 10px; letter-spacing: .16em; padding: 8px 14px; cursor: pointer; transition: .2s; }
+.lock:hover { color: var(--ink); border-color: var(--ink); }
+.lock.on { color: var(--accent); border-color: var(--accent); }
+.slider { display: flex; align-items: center; gap: 11px; }
+input[type=range] { width: 168px; accent-color: var(--accent); }
+.gen { background: var(--accent); border: 1px solid var(--accent); color: #0c0c0e; font: inherit;
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase; padding: 10px 26px; cursor: pointer;
+  transition: .2s; }
+.gen:hover { filter: brightness(1.1); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <b>twofonts</b>
+  <button class="ghost" id="theme">claro / escuro</button>
+</div>
+
+<main class="stage">
+  <h1 class="headline" id="h" contenteditable spellcheck="false">Beleza é função</h1>
+  <div class="rule"></div>
+  <p class="body" id="p" contenteditable spellcheck="false">O pareamento de fontes é o equilíbrio entre semelhança e contraste — formas que conversam sem competir. Uma carrega a voz, a outra carrega o argumento.</p>
+  <div class="signature">
+    <span id="sigA" class="on"><b id="nA">Playfair Display</b> · 700 · headline</span>
+    <span id="sigB"><b id="nB">Inter</b> · 400 · corpo</span>
+  </div>
+</main>
+
+<div class="shelf-wrap">
+  <div class="shelf-head">candidatos para <span class="slot" id="slotLabel">headline</span></div>
+  <div class="shelf" id="shelf"></div>
+</div>
+
+<div class="controls">
+  <button class="lock" id="lA">travar A</button>
+  <div class="slider"><span>harmonia</span><input type="range" id="c" min="0" max="1" step="0.01" value="0.5"><span>contraste</span></div>
+  <button class="lock" id="lB">travar B</button>
+  <button class="gen" id="gen">gerar</button>
+</div>
+
+<script>
+const HEAD = ["Playfair Display","Fraunces","Instrument Serif","Syne","DM Serif Display","Bricolage Grotesque"];
+const BODY = ["Inter","IBM Plex Sans","Manrope","DM Sans","Work Sans","Source Serif 4"];
+const W = { "Playfair Display":700,"Fraunces":700,"Instrument Serif":400,"Syne":700,"DM Serif Display":400,"Bricolage Grotesque":700 };
+
+let slot = "a", a = "Playfair Display", b = "Inter", lockA = false, lockB = false;
+const $ = (id) => document.getElementById(id);
+
+function paint() {
+  $("h").style.fontFamily = `"${a}", serif`;
+  $("h").style.fontWeight = W[a] || 700;
+  $("p").style.fontFamily = `"${b}", sans-serif`;
+  $("nA").textContent = a; $("nB").textContent = b;
+  $("sigA").classList.toggle("on", slot === "a");
+  $("sigB").classList.toggle("on", slot === "b");
+  $("slotLabel").textContent = slot === "a" ? "headline" : "corpo";
+  shelf();
+}
+
+function shelf() {
+  const list = slot === "a" ? HEAD : BODY;
+  const cur = slot === "a" ? a : b;
+  $("shelf").innerHTML = list.map((f) => `
+    <button class="cand ${f === cur ? "on" : ""}" data-f="${f}">
+      <span class="aa" style="font-family:'${f}',serif;font-weight:${slot === "a" ? (W[f] || 700) : 400}">Aa</span>
+      <span class="nm">${f}</span>
+    </button>`).join("");
+  [...document.querySelectorAll(".cand")].forEach((el) => {
+    el.onclick = () => { slot === "a" ? (a = el.dataset.f) : (b = el.dataset.f); paint(); };
+  });
+}
+
+$("sigA").onclick = () => { slot = "a"; paint(); };
+$("sigB").onclick = () => { slot = "b"; paint(); };
+$("lA").onclick = () => { lockA = !lockA; $("lA").classList.toggle("on", lockA); };
+$("lB").onclick = () => { lockB = !lockB; $("lB").classList.toggle("on", lockB); };
+$("gen").onclick = () => {
+  if (!lockA) a = HEAD[Math.floor(Math.random() * HEAD.length)];
+  if (!lockB) b = BODY[Math.floor(Math.random() * BODY.length)];
+  paint();
+};
+$("theme").onclick = () => {
+  const now = document.documentElement.getAttribute("data-theme") === "light";
+  document.documentElement.setAttribute("data-theme", now ? "dark" : "light");
+};
+addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !e.target.isContentEditable) { e.preventDefault(); $("gen").click(); }
+});
+paint();
+</script>
+</body>
+</html>

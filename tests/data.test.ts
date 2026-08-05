@@ -44,4 +44,18 @@ describe("loadFontDB", () => {
     }));
     await expect(loadFontDB()).rejects.toThrow(/campos inválidos/);
   });
+
+  it("reporta progresso ao ler o catálogo em stream", async () => {
+    const progress: number[] = [];
+    const payload = JSON.stringify(fixture);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(payload, {
+      status: 200,
+      headers: { "content-length": String(new TextEncoder().encode(payload).byteLength) },
+    })));
+
+    await loadFontDB("/map.json", { onProgress: (value) => progress.push(value) });
+
+    expect(progress.at(-1)).toBe(1);
+    expect(progress.every((value) => value >= 0 && value <= 1)).toBe(true);
+  });
 });

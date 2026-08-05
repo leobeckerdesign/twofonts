@@ -1,13 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { WORLD, lodForScale, screenPos, visibleEntries } from "../src/map/lod";
+import {
+  WORLD,
+  lodForScale,
+  lodWithHysteresis,
+  screenPos,
+  visibleEntries,
+} from "../src/map/lod";
 
 const view = { x: 0, y: 0, scale: 1, w: 1000, h: 800 };
 
 describe("lodForScale", () => {
   it("mapeia zoom para níveis de detalhe", () => {
     expect(lodForScale(0.2)).toBe("dot");
-    expect(lodForScale(1.0)).toBe("name");
+    expect(lodForScale(0.7)).toBe("name");
     expect(lodForScale(2.0)).toBe("card");
+  });
+
+  it("usa histerese para não oscilar nos thresholds", () => {
+    expect(lodWithHysteresis(0.49, "dot")).toBe("dot");
+    expect(lodWithHysteresis(0.52, "dot")).toBe("name");
+    expect(lodWithHysteresis(1.1, "dot")).toBe("card");
+    expect(lodWithHysteresis(0.46, "name")).toBe("name");
+    expect(lodWithHysteresis(0.43, "name")).toBe("dot");
+    expect(lodWithHysteresis(0.92, "card")).toBe("card");
+    expect(lodWithHysteresis(0.85, "card")).toBe("name");
+    expect(lodWithHysteresis(0.4, "card")).toBe("dot");
   });
 });
 

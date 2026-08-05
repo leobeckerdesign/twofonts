@@ -11,9 +11,25 @@ export interface View {
 }
 
 export function lodForScale(scale: number): LOD {
-  if (scale < 0.55) return "dot";
-  if (scale < 1.4) return "name";
+  if (scale < 0.48) return "dot";
+  if (scale < 0.95) return "name";
   return "card";
+}
+
+/** Avoids rebuilding the DOM when zoom oscillates around a LOD boundary. */
+export function lodWithHysteresis(scale: number, previous: LOD | null): LOD {
+  if (previous === null) return lodForScale(scale);
+  if (previous === "dot") {
+    if (scale >= 1) return "card";
+    return scale >= 0.52 ? "name" : "dot";
+  }
+  if (previous === "name") {
+    if (scale < 0.44) return "dot";
+    if (scale >= 1) return "card";
+    return "name";
+  }
+  if (scale < 0.44) return "dot";
+  return scale < 0.86 ? "name" : "card";
 }
 
 export function screenPos(
@@ -27,7 +43,7 @@ export function screenPos(
 }
 
 export function visibleEntries<T extends { x: number; y: number }>(
-  entries: T[],
+  entries: readonly T[],
   view: View,
   pad = 200,
 ): T[] {

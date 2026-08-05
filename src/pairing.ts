@@ -3,20 +3,28 @@ import type { FontEntry, PairState } from "./types";
 
 const BODY_FRIENDLY = new Set(["Sans Serif", "Serif", "Monospace"]);
 const TOP_K = 20;
+const vectorSquaredNorms = new WeakMap<number[], number>();
+
+function vectorSquaredNorm(vector: number[]): number {
+  const cached = vectorSquaredNorms.get(vector);
+  if (cached !== undefined) return cached;
+  let squared = 0;
+  for (const value of vector) squared += value * value;
+  vectorSquaredNorms.set(vector, squared);
+  return squared;
+}
 
 export function splitCosine(a: number[], b: number[]): { pos: number; neg: number } {
   if (a.length === 0 || a.length !== b.length) {
     throw new Error("Vetores de fontes precisam ter a mesma dimensão não vazia");
   }
 
-  let pos = 0, neg = 0, na = 0, nb = 0;
+  let pos = 0, neg = 0;
   for (let i = 0; i < a.length; i++) {
     const p = a[i] * b[i];
     if (p >= 0) pos += p; else neg += p;
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
   }
-  const norm = Math.sqrt(na * nb) || 1;
+  const norm = Math.sqrt(vectorSquaredNorm(a) * vectorSquaredNorm(b)) || 1;
   return { pos: pos / norm, neg: -neg / norm + 0 };
 }
 
@@ -46,7 +54,7 @@ function randomItem<T>(items: T[], rng: () => number): T {
 
 /** Nunca repete a fonte fixa; evita a seleção anterior quando houver opção. */
 function pickTop(
-  ranked: FontEntry[],
+  ranked: readonly FontEntry[],
   disallow: Set<string>,
   avoid: Set<string>,
   rng: () => number,
@@ -54,6 +62,16 @@ function pickTop(
   const allowed = ranked.filter((entry) => !disallow.has(entry.family));
   const fresh = allowed.filter((entry) => !avoid.has(entry.family));
   return randomItem((fresh.length > 0 ? fresh : allowed).slice(0, TOP_K), rng);
+}
+
+function rankedBy(
+  entries: readonly FontEntry[],
+  score: (entry: FontEntry) => number,
+): FontEntry[] {
+  return entries
+    .map((entry, index) => ({ entry, index, score: score(entry) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(({ entry }) => entry);
 }
 
 export function generatePair(
@@ -74,13 +92,13 @@ export function generatePair(
   // A seleção anterior é evitada quando há uma terceira opção, mas pode ser
   // mantida num catálogo de apenas duas famílias.
   const chooseB = (fixedA: FontEntry, currentB: string): string => {
-    const ranked = [...db.entries]
-      .sort((p, q) => pairScore(fixedA, q, contrast) - pairScore(fixedA, p, contrast));
+    // Compute each O(vector) score once. The former sort comparator recalculated
+    // it O(n log n) times and could consume a whole interaction frame.
+    const ranked = rankedBy(db.entries, (candidate) => pairScore(fixedA, candidate, contrast));
     return pickTop(ranked, new Set([fixedA.family]), new Set([currentB]), rng).family;
   };
   const chooseA = (fixedB: FontEntry, currentA: string): string => {
-    const ranked = [...db.entries]
-      .sort((p, q) => pairScore(q, fixedB, contrast) - pairScore(p, fixedB, contrast));
+    const ranked = rankedBy(db.entries, (candidate) => pairScore(candidate, fixedB, contrast));
     return pickTop(ranked, new Set([fixedB.family]), new Set([currentA]), rng).family;
   };
 

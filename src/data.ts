@@ -5,6 +5,11 @@ export interface FontDB {
   byFamily: Map<string, FontEntry>;
 }
 
+export interface LoadFontDBOptions {
+  signal?: AbortSignal;
+  onProgress?: (progress: number) => void;
+}
+
 export function indexFonts(entries: FontEntry[]): FontDB {
   if (entries.length === 0) {
     throw new Error("O catálogo de fontes está vazio");
@@ -78,8 +83,35 @@ export function parseFontEntries(value: unknown): FontEntry[] {
   return value as FontEntry[];
 }
 
-export async function loadFontDB(url = "/fonts-map.json"): Promise<FontDB> {
-  const res = await fetch(url);
+async function readJsonResponse(
+  res: Response,
+  onProgress?: (progress: number) => void,
+): Promise<unknown> {
+  if (!res.body || !onProgress) return res.json();
+
+  const total = Number(res.headers.get("content-length")) || 0;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let loaded = 0;
+  const chunks: string[] = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    loaded += value.byteLength;
+    chunks.push(decoder.decode(value, { stream: true }));
+    onProgress(total > 0 ? Math.min(0.98, loaded / total) : 0.5);
+  }
+  chunks.push(decoder.decode());
+  onProgress(1);
+  return JSON.parse(chunks.join("")) as unknown;
+}
+
+export async function loadFontDB(
+  url = "/fonts-map.json",
+  options: LoadFontDBOptions = {},
+): Promise<FontDB> {
+  const res = await fetch(url, { signal: options.signal });
   if (!res.ok) throw new Error(`fonts-map.json: HTTP ${res.status}`);
-  return indexFonts(parseFontEntries(await res.json()));
+  return indexFonts(parseFontEntries(await readJsonResponse(res, options.onProgress)));
 }

@@ -185,6 +185,8 @@ export function initBackground(canvas: HTMLCanvasElement): void {
 
   let stopped = false;
   let animationFrame: number | null = null;
+  let lastDrawAt = Number.NEGATIVE_INFINITY;
+  const frameInterval = 1000 / 30;
 
   const stopWithFallback = (): void => {
     if (stopped) return;
@@ -202,6 +204,7 @@ export function initBackground(canvas: HTMLCanvasElement): void {
     try {
       window.removeEventListener("resize", onResize);
       canvas.removeEventListener("webglcontextlost", onContextLost);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     } catch {
       // Listener cleanup is secondary to making the canvas safe and static.
     }
@@ -212,8 +215,9 @@ export function initBackground(canvas: HTMLCanvasElement): void {
     if (stopped) return false;
 
     try {
-      // 1.5 is enough for a diffuse background and keeps fill rate bounded.
-      const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.5);
+      // The shader is diffuse; a near-1x buffer avoids millions of needless
+      // fragments on HiDPI screens without a visible sharpness loss.
+      const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.15);
       canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
       canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
       canvas.style.width = `${window.innerWidth}px`;
@@ -264,11 +268,16 @@ export function initBackground(canvas: HTMLCanvasElement): void {
 
   function loop(timestamp: number): void {
     animationFrame = null;
-    if (!draw(timestamp) || stopped) return;
+    if (stopped || document.hidden) return;
+    if (timestamp - lastDrawAt >= frameInterval) {
+      if (!draw(timestamp)) return;
+      lastDrawAt = timestamp;
+    }
     requestNextFrame();
   }
 
   function requestNextFrame(): void {
+    if (animationFrame !== null || document.hidden) return;
     try {
       animationFrame = window.requestAnimationFrame(loop);
     } catch {
@@ -276,8 +285,23 @@ export function initBackground(canvas: HTMLCanvasElement): void {
     }
   }
 
+  function onVisibilityChange(): void {
+    if (document.hidden) {
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+      return;
+    }
+    if (reducedMotion) {
+      draw(0);
+      return;
+    }
+    lastDrawAt = Number.NEGATIVE_INFINITY;
+    requestNextFrame();
+  }
+
   canvas.addEventListener("webglcontextlost", onContextLost);
   window.addEventListener("resize", onResize);
+  document.addEventListener("visibilitychange", onVisibilityChange);
 
   if (!resize()) return;
 

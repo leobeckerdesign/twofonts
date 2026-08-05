@@ -154,10 +154,16 @@ export class Specimen {
       if (aLoaded) {
         this.headline.style.fontFamily = fontStack(state.a, "serif");
         this.headline.style.fontWeight = String(aWeight);
+      } else {
+        this.headline.style.fontFamily = "serif";
+        this.headline.style.removeProperty("font-weight");
       }
       if (bLoaded) {
         this.body.style.fontFamily = fontStack(state.b, "sans-serif");
         this.body.style.fontWeight = String(bWeight);
+      } else {
+        this.body.style.fontFamily = "sans-serif";
+        this.body.style.removeProperty("font-weight");
       }
       gsap.set(targets, { opacity: 1, x: 0, y: 0, clearProps: "scale" });
       return options.report ? result : undefined;
@@ -167,10 +173,16 @@ export class Specimen {
     if (aLoaded) {
       this.headline.style.fontFamily = fontStack(state.a, "serif");
       this.headline.style.fontWeight = String(aWeight);
+    } else {
+      this.headline.style.fontFamily = "serif";
+      this.headline.style.removeProperty("font-weight");
     }
     if (bLoaded) {
       this.body.style.fontFamily = fontStack(state.b, "sans-serif");
       this.body.style.fontWeight = String(bWeight);
+    } else {
+      this.body.style.fontFamily = "sans-serif";
+      this.body.style.removeProperty("font-weight");
     }
 
     const flip = Flip.from(flipState, {

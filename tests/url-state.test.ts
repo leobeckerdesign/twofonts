@@ -16,4 +16,16 @@ describe("url-state", () => {
     expect(s.contrast).toBe(1);
     expect(decodeState("c=abc").contrast).toBe(DEFAULT_STATE.contrast);
   });
+
+  it("trata contraste vazio e famílias vazias como defaults", () => {
+    expect(decodeState("c=&a=%20&b=")).toMatchObject({
+      a: DEFAULT_STATE.a,
+      b: DEFAULT_STATE.b,
+      contrast: DEFAULT_STATE.contrast,
+    });
+  });
+
+  it("limita texto vindo de uma URL hostil", () => {
+    expect(decodeState(`t=${"x".repeat(2_000)}`).text).toHaveLength(500);
+  });
 });

@@ -17,6 +17,10 @@ describe("splitCosine", () => {
   it("idênticos: tudo positivo, nada negativo", () => {
     expect(splitCosine([1, 1], [1, 1])).toEqual({ pos: 1, neg: 0 });
   });
+  it("rejeita vetores vazios ou de dimensões diferentes", () => {
+    expect(() => splitCosine([], [])).toThrow(/mesma dimensão/);
+    expect(() => splitCosine([1], [1, 2])).toThrow(/mesma dimensão/);
+  });
 });
 
 describe("pairScore", () => {
@@ -33,6 +37,10 @@ describe("pairScore", () => {
     const sem400 = F("Sem400", [1, 0], "Sans Serif", [700]);
     expect(pairScore(base, legivel, 0.5)).toBeGreaterThan(pairScore(base, display, 0.5));
     expect(pairScore(base, legivel, 0.5)).toBeGreaterThan(pairScore(base, sem400, 0.5));
+  });
+  it("considera Monospace uma categoria legível para corpo", () => {
+    expect(pairScore(base, F("Mono", [1, 0], "Monospace"), 0.5))
+      .toBe(pairScore(base, F("Sans", [1, 0]), 0.5));
   });
 });
 
@@ -62,6 +70,13 @@ describe("generatePair", () => {
   it("é determinístico com rng injetado", () => {
     const s = state();
     expect(generatePair(db, s, () => 0)).toEqual(generatePair(db, s, () => 0));
+  });
+
+  it("tolera rng no limite 1 sem sair do array", () => {
+    const out = generatePair(db, state(), () => 1);
+    expect(db.byFamily.has(out.a)).toBe(true);
+    expect(db.byFamily.has(out.b)).toBe(true);
+    expect(out.a).not.toBe(out.b);
   });
 
   it("pool vazio após exclusão: não lança, mantém o slot B atual em vez de repetir A (Finding 1)", () => {
@@ -94,5 +109,10 @@ describe("generatePair", () => {
       expect(out.b).toBe("Dois");
       expect(out.a).not.toBe(out.b);
     }
+  });
+
+  it("falha de forma explícita com menos de duas fontes", () => {
+    const empty = { entries: [], byFamily: new Map<string, FontEntry>() };
+    expect(() => generatePair(empty, state())).toThrow(/ao menos duas/);
   });
 });

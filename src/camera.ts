@@ -132,6 +132,7 @@ export class Camera {
     const camera = this;
     this.drag = Draggable.create(world, {
       bounds: this.currentBounds(),
+      dragClickables: false,
       inertia: !prefersReducedMotion(),
       onPress() {
         camera.interruptMotion();

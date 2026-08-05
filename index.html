@@ -13,6 +13,14 @@
 </head>
 <body>
   <canvas id="bg" aria-hidden="true"></canvas>
+  <header id="topbar">
+    <div id="brand" aria-label="twofonts">two<span>fonts</span></div>
+    <div id="map-meta">
+      <span id="font-count">carregando catálogo</span>
+      <span aria-hidden="true">•</span>
+      <span>arraste para explorar · scroll para zoom</span>
+    </div>
+  </header>
   <div id="viewport" aria-label="Mapa navegável de famílias tipográficas">
     <div id="world">
       <svg id="arc-layer" width="4000" height="4000" aria-hidden="true"></svg>
@@ -21,6 +29,10 @@
   <div id="loading" role="status" aria-live="polite">carregando o mapa…</div>
   <aside id="hud">
     <div id="specimen">
+      <div id="pair-meta" aria-live="polite">
+        <span><b>A</b><span id="family-a">Playfair Display</span></span>
+        <span><b>B</b><span id="family-b">Inter</span></span>
+      </div>
       <h1 id="spec-headline" contenteditable="true" spellcheck="false" aria-label="Texto de demonstração editável">Beleza é função</h1>
       <p id="spec-body">O pareamento de fontes é o equilíbrio entre semelhança e contraste — formas que conversam sem competir.</p>
     </div>
@@ -33,6 +45,7 @@
       <button id="generate" type="button">gerar <kbd>espaço</kbd></button>
     </div>
   </aside>
+  <div id="notice" role="status" aria-live="polite"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

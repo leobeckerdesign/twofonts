@@ -5,6 +5,7 @@ import { WORLD, lodForScale, visibleEntries, type LOD, type View } from "./lod";
 
 const SUBSET = "AaGgQqRe 0123456789";
 const MAX_NODES = 180;
+const MAX_CONCURRENT_FONT_LOADS = 6;
 const reducedMotion =
   typeof matchMedia === "function" &&
   matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -17,11 +18,21 @@ interface Live {
   drift?: gsap.core.Tween;
 }
 
+interface FontJob {
+  item: Live;
+  revision: number;
+  lod: LOD;
+}
+
 export class CardLayer {
   onPick: ((family: string) => void) | null = null;
+  onUnavailable: ((family: string) => void) | null = null;
 
   private live = new Map<string, Live>();
   private pool: HTMLElement[] = [];
+  private activeFamilies = new Set<string>();
+  private fontQueue: FontJob[] = [];
+  private activeFontLoads = 0;
 
   constructor(
     private world: HTMLElement,
@@ -32,12 +43,24 @@ export class CardLayer {
     return this.live.get(family)?.el;
   }
 
+  setActive(families: Iterable<string>): void {
+    this.activeFamilies = new Set(families);
+    for (const [family, item] of this.live) {
+      item.el.classList.toggle("card--active", this.activeFamilies.has(family));
+    }
+  }
+
   render(view: View): void {
     const lod = lodForScale(view.scale);
-    const wanted = visibleEntries(
+    const visible = visibleEntries(
       this.entries.filter((entry) => !failedFonts.has(entry.family)),
       view,
-    ).slice(0, MAX_NODES);
+    );
+    // O par ativo nunca perde lugar no pool para a ordem original do catálogo.
+    const wanted = [
+      ...visible.filter((entry) => this.activeFamilies.has(entry.family)),
+      ...visible.filter((entry) => !this.activeFamilies.has(entry.family)),
+    ].slice(0, MAX_NODES);
     const keep = new Set(wanted.map((entry) => entry.family));
 
     for (const [family, item] of this.live) {
@@ -52,7 +75,18 @@ export class CardLayer {
         item = this.acquire(entry);
       }
 
-      if (item.lod !== lod) this.decorate(item, lod);
+      const targetLod = lod === "dot" && this.activeFamilies.has(entry.family)
+        ? "name"
+        : lod;
+      if (item.lod !== targetLod) this.decorate(item, targetLod);
+
+      const pinned = lod === "dot" && this.activeFamilies.has(entry.family);
+      item.el.classList.toggle("card--pinned", pinned);
+      if (pinned) {
+        item.el.style.fontSize = `${18 / view.scale}px`;
+      } else {
+        item.el.style.removeProperty("font-size");
+      }
     }
   }
 
@@ -107,6 +141,8 @@ export class CardLayer {
   private createNode(): HTMLElement {
     const el = document.createElement("div");
     el.className = "card";
+    // O Draggable do mundo respeita este contrato e deixa o clique chegar ao card.
+    el.dataset.clickable = "true";
     el.setAttribute("role", "button");
     el.tabIndex = 0;
 
@@ -134,6 +170,7 @@ export class CardLayer {
     item.revision += 1;
     const revision = item.revision;
     el.className = `card card--${lod}`;
+    el.classList.toggle("card--active", this.activeFamilies.has(entry.family));
 
     if (el.parentElement !== this.world) this.world.appendChild(el);
 
@@ -155,24 +192,63 @@ export class CardLayer {
       el.replaceChildren(name, sample, meta);
     }
 
-    try {
-      void loadFont(
-        entry.family,
-        400,
-        lod === "card" ? undefined : SUBSET,
-      ).then(
-        (ok) => this.finishFontLoad(item, revision, ok),
-        () => this.finishFontLoad(item, revision, false),
-      );
-    } catch {
-      this.finishFontLoad(item, revision, false);
+    this.enqueueFontLoad(item, revision, lod);
+  }
+
+  private enqueueFontLoad(item: Live, revision: number, lod: LOD): void {
+    const job = { item, revision, lod };
+    if (this.activeFamilies.has(item.entry.family)) {
+      this.fontQueue.unshift(job);
+    } else {
+      this.fontQueue.push(job);
+    }
+    this.pumpFontQueue();
+  }
+
+  private pumpFontQueue(): void {
+    while (this.activeFontLoads < MAX_CONCURRENT_FONT_LOADS) {
+      const job = this.fontQueue.shift();
+      if (!job) return;
+
+      const { item, revision, lod } = job;
+      if (
+        this.live.get(item.entry.family) !== item ||
+        item.revision !== revision ||
+        item.lod !== lod
+      ) {
+        continue;
+      }
+
+      this.activeFontLoads += 1;
+      let request: Promise<boolean>;
+      try {
+        request = loadFont(
+          item.entry.family,
+          400,
+          lod === "card" ? undefined : SUBSET,
+        );
+      } catch {
+        request = Promise.resolve(false);
+      }
+
+      void request
+        .then(
+          (ok) => this.finishFontLoad(item, revision, ok),
+          () => this.finishFontLoad(item, revision, false),
+        )
+        .finally(() => {
+          this.activeFontLoads -= 1;
+          this.pumpFontQueue();
+        });
     }
   }
 
   private finishFontLoad(item: Live, revision: number, ok: boolean): void {
     const { el, entry } = item;
 
-    if (!ok) failedFonts.add(entry.family);
+    if (!ok && failedFonts.has(entry.family)) {
+      this.onUnavailable?.(entry.family);
+    }
     if (
       this.live.get(entry.family) !== item ||
       el.dataset.family !== entry.family ||

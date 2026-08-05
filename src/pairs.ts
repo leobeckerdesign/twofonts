@@ -49,8 +49,11 @@ export function pickPair(
   return pool[Math.floor(normalized * pool.length)];
 }
 
-/** Representantes da faixa ativa — é o que a prateleira mostra. */
-export function pairsIn(data: PairsData, contrast: number, limit = 14): { a: FontMeta; b: FontMeta }[] {
+/**
+ * Todos os pares da faixa ativa — é o que a prateleira oferece. A lista vem
+ * inteira; quem controla o custo é a prateleira, que carrega as fontes em lotes.
+ */
+export function pairsIn(data: PairsData, contrast: number): { a: FontMeta; b: FontMeta }[] {
   const bucket = data.buckets[bucketFor(data, contrast)];
   if (!bucket) return [];
 
@@ -58,9 +61,7 @@ export function pairsIn(data: PairsData, contrast: number, limit = 14): { a: Fon
   for (const [i, j] of bucket.pairs) {
     const a = data.fonts[i];
     const b = data.fonts[j];
-    if (!a || !b) continue;
-    out.push({ a, b });
-    if (out.length >= limit) break;
+    if (a && b) out.push({ a, b });
   }
   return out;
 }

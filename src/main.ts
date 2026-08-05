@@ -5,7 +5,7 @@ import { loadFont, pinFontFamilies } from "./fonts";
 import { fontByFamily, loadPairs, pairsIn, pickPair, weightRoles } from "./pairs";
 import { assignRoles } from "./roles";
 import type { AppState, PairsData } from "./types";
-import { Controls } from "./ui/controls";
+import { CONTRAST_STEPS, Controls, stepToContrast } from "./ui/controls";
 import { Shelf } from "./ui/shelf";
 import { decodeState, encodeState } from "./url-state";
 
@@ -95,9 +95,13 @@ async function boot(): Promise<void> {
 
   controls.bind({
     onGenerate: () => {
-      const next = pickPair(data, state.contrast, { a: state.a, b: state.b });
+      // Sortear é sortear de verdade: o corte também muda, senão o botão só
+      // percorreria a mesma faixa e a barra viraria decoração.
+      const step = Math.floor(Math.random() * CONTRAST_STEPS);
+      const contrast = stepToContrast(step);
+      const next = pickPair(data, contrast, { a: state.a, b: state.b });
       if (!next) return;
-      state = { ...state, ...next };
+      state = { ...state, ...next, contrast };
       apply(true);
     },
     onContrast: (contrast) => {

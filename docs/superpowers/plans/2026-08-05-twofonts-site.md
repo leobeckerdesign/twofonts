@@ -317,8 +317,10 @@ export function splitCosine(a: number[], b: number[]): { pos: number; neg: numbe
     na += a[i] * a[i];
     nb += b[i] * b[i];
   }
-  const norm = Math.sqrt(na) * Math.sqrt(nb) || 1;
-  return { pos: pos / norm, neg: -neg / norm };
+  // sqrt(na*nb) e não sqrt(na)*sqrt(nb): o segundo produz 2.0000000000000004
+  // para na=nb=2 e quebra igualdade exata nos testes
+  const norm = Math.sqrt(na * nb) || 1;
+  return { pos: pos / norm, neg: -neg / norm + 0 }; // +0 normaliza -0
 }
 
 /** Score do par: contraste modula entre semelhança (pos) e oposição (neg);

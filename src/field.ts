@@ -15,6 +15,8 @@ const TITLE_BASE = 2.2;
 /** Amplitude do parallax por profundidade: card pequeno se desloca mais. */
 const AMP = { large: 9, medium: 17, small: 27 } as const;
 const MOBILE_BREAKPOINT = 720;
+/** Teto de espera pelas fontes antes de revelar mesmo assim. */
+const REVEAL_TIMEOUT_MS = 3_000;
 
 const LANES = [.04, .62, .30, .86, .16, .70, .44, .02, .78, .36, .58, .10, .92, .24, .66, .48, .82, .14];
 /** No celular só existem dois lados; a sobreposição vertical faz o entrelace. */
@@ -52,8 +54,8 @@ export interface FieldPair {
  * Se duas delas disputassem a mesma propriedade, uma anularia a outra.
  */
 export class Field {
-  /** Chamado quando um card precisa das fontes carregadas. */
-  onFontsNeeded: ((families: string[]) => void) | null = null;
+  /** Pede as fontes do par. A promessa resolve quando dá para revelar o texto. */
+  onFontsNeeded: ((families: string[]) => Promise<unknown> | void) | null = null;
 
   private slots: Slot[] = [];
   private scroll = 0;
@@ -61,6 +63,7 @@ export class Field {
   private total = 0;
   private frame: number | null = null;
   private pair: FieldPair | null = null;
+  private revealToken = 0;
 
   private scale = 1.3;
   private margin = 56;
@@ -78,21 +81,63 @@ export class Field {
 
   setPair(pair: FieldPair): void {
     this.pair = pair;
-    this.paint();
+    const ready = this.paint();
+    if (this.reduced || document.hidden) {
+      this.skeleton(false);
+      gsap.set(this.slots.map((s) => s.card), { opacity: 1, y: 0 });
+      return;
+    }
+    this.skeleton(true);
+    void this.revealWhenReady(ready);
   }
 
-  /** Troca de par com dissolução em cascata. */
+  /** Troca de par: dissolve, mostra o esqueleto e revela em cascata. */
   swap(pair: FieldPair): void {
     const cards = this.slots.map((s) => s.card);
     if (this.reduced || document.hidden) {
-      gsap.set(cards, { opacity: 1 });
+      gsap.set(cards, { opacity: 1, y: 0 });
       this.setPair(pair);
       return;
     }
+
+    gsap.killTweensOf(cards);
     gsap.timeline()
-      .to(cards, { opacity: 0, duration: .24, stagger: .02, ease: "power2.in" })
-      .add(() => this.setPair(pair))
-      .to(cards, { opacity: 1, duration: .42, stagger: .028, ease: "power3.out" });
+      .to(cards, { opacity: 0, y: 10, duration: .22, stagger: .016, ease: "power2.in" })
+      .add(() => {
+        this.pair = pair;
+        const ready = this.paint();
+        this.skeleton(true);
+        gsap.set(cards, { opacity: 1, y: 0 });
+        void this.revealWhenReady(ready);
+      });
+  }
+
+  /**
+   * O esqueleto some quando as fontes chegam. O teto de espera existe para uma
+   * fonte lenta ou morta não deixar o campo em osso para sempre.
+   */
+  private async revealWhenReady(ready: Promise<unknown> | void): Promise<void> {
+    const token = ++this.revealToken;
+    await Promise.race([
+      Promise.resolve(ready),
+      new Promise((resolve) => setTimeout(resolve, REVEAL_TIMEOUT_MS)),
+    ]);
+    if (token !== this.revealToken) return;   // outro par assumiu no meio
+
+    this.skeleton(false);
+    const cards = this.slots.map((s) => s.card);
+    gsap.fromTo(
+      cards,
+      { opacity: 0, y: 16 },
+      {
+        opacity: 1, y: 0, duration: .62, ease: "power3.out",
+        stagger: { each: .045, from: "start" },
+      },
+    );
+  }
+
+  private skeleton(on: boolean): void {
+    for (const s of this.slots) s.card.classList.toggle("is-loading", on);
   }
 
   destroy(): void {
@@ -183,7 +228,7 @@ export class Field {
     });
   }
 
-  private paint(): void {
+  private paint(): Promise<unknown> | void {
     const pair = this.pair;
     if (!pair) return;
 
@@ -216,7 +261,7 @@ export class Field {
     }
 
     this.layout();
-    this.onFontsNeeded?.([...needed]);
+    return this.onFontsNeeded?.([...needed]);
   }
 
   /**

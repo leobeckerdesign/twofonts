@@ -44,7 +44,24 @@ body {
 /* ---------- campo ----------
    Três camadas, cada uma dona de UMA transform: .slot = scroll,
    .par = ponteiro + proximidade, .zoom = escala base, .card = flutuação. */
-#field { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden; }
+/* O campo limpa o próprio conteúdo ao repintar, então os botões de navegação
+   vivem no palco, como irmãos, e não dentro dele. */
+#stage { position: relative; z-index: 1; flex: 1; min-height: 0; }
+#field { position: absolute; inset: 0; overflow: hidden; }
+
+.nav {
+  position: absolute; top: 50%; z-index: 12;
+  display: grid; place-items: center;
+  width: 46px; height: 46px; transform: translateY(-50%);
+  background: rgba(11, 11, 13, .55); backdrop-filter: blur(6px);
+  border: 1px solid var(--line); color: var(--muted);
+  font-size: 17px; cursor: pointer;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.nav:hover, .nav:focus-visible { color: var(--paper); border-color: var(--paper); background: rgba(11, 11, 13, .8); }
+.nav--prev { left: 16px; }
+.nav--next { right: 16px; }
+.nav[disabled] { opacity: .3; pointer-events: none; }
 .slot { position: absolute; top: 0; left: 0; will-change: transform; }
 .par { will-change: transform; }
 .zoom { transform-origin: top left; }
@@ -63,6 +80,29 @@ body {
   font-family: "Plex Mono UI", monospace;
   font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
   opacity: .5; margin-bottom: 14px;
+}
+
+/* Esqueleto enquanto as fontes do par chegam. O texto continua ocupando o
+   mesmo espaço, então a revelação não empurra o layout. */
+.card.is-loading .t,
+.card.is-loading .p {
+  color: transparent;
+  border-radius: 3px;
+  background-color: currentColor;
+  background-image: linear-gradient(
+    100deg,
+    rgba(127, 127, 127, .10) 30%,
+    rgba(127, 127, 127, .24) 50%,
+    rgba(127, 127, 127, .10) 70%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.25s linear infinite;
+}
+.card.is-loading .rule { opacity: .08; }
+
+@keyframes shimmer {
+  from { background-position: 140% 0; }
+  to { background-position: -40% 0; }
 }
 .t { line-height: 1.02; letter-spacing: -.02em; }
 .t + .t { margin-top: 12px; }

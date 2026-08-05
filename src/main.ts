@@ -4,7 +4,7 @@ import { Field } from "./field";
 import { loadFont, pinFontFamilies } from "./fonts";
 import { fontByFamily, loadPairs, pairsIn, pickPair, weightRoles } from "./pairs";
 import { assignRoles } from "./roles";
-import type { AppState, PairsData } from "./types";
+import type { AppState, FontMeta, PairsData } from "./types";
 import { CONTRAST_STEPS, Controls, stepToContrast } from "./ui/controls";
 import { Shelf } from "./ui/shelf";
 import { decodeState, encodeState } from "./url-state";
@@ -49,13 +49,20 @@ async function boot(): Promise<void> {
   const controls = new Controls();
   const shelf = new Shelf(document.getElementById("shelf")!);
 
+  // Lista de pares do corte ativo e onde estamos nela: as setas caminham por
+  // aqui, e é a mesma lista que a prateleira exibe.
+  let current: { a: FontMeta; b: FontMeta }[] = [];
+  let cursor = 0;
+  let renderedContrast = Number.NaN;
+
   shelf.onPick = (pair) => {
     if (pair.a.f === state.a && pair.b.f === state.b) return;
     state = { ...state, a: pair.a.f, b: pair.b.f };
     apply(true);
   };
 
-  // Carrega só os pesos que os cards realmente pedem para este par.
+  // Carrega só os pesos que os cards realmente pedem, e devolve a promessa:
+  // é ela que tira o esqueleto e dispara a cascata.
   field.onFontsNeeded = (families) => {
     const roles = weightRoles(data, state.contrast);
     const a = fontByFamily(data, state.a);
@@ -64,10 +71,12 @@ async function boot(): Promise<void> {
 
     pinFontFamilies(families);
     const assignment = assignRoles(a, b, 0, roles);
-    const wanted = new Set<number>([assignment.titleWeight, assignment.bodyWeight]);
+    const weights = new Set<number>([assignment.titleWeight, assignment.bodyWeight]);
+    const jobs: Promise<boolean>[] = [];
     for (const family of families) {
-      for (const weight of wanted) void loadFont(family, weight);
+      for (const weight of weights) jobs.push(loadFont(family, weight));
     }
+    return Promise.all(jobs);
   };
 
   const apply = (animate: boolean): void => {
@@ -82,16 +91,53 @@ async function boot(): Promise<void> {
 
     controls.sync(state.a, state.b, state.contrast);
 
-    // O gerar sorteia entre centenas de pares e a prateleira mostra poucos:
-    // sem isto o par ativo quase nunca estaria visível e o destaque não teria
-    // o que destacar. Ele entra na frente quando não veio naturalmente.
-    const visible = pairsIn(data, state.contrast);
-    if (!visible.some((p) => p.a.f === state.a && p.b.f === state.b)) {
-      visible.unshift({ a, b });
+    // O sortear escolhe entre centenas de pares: se o atual não pertencer à
+    // lista da faixa, entra na frente para o destaque ter o que destacar.
+    const sameCut = renderedContrast === state.contrast;
+    let list = sameCut ? current : pairsIn(data, state.contrast);
+    let index = list.findIndex((p) => p.a.f === state.a && p.b.f === state.b);
+    const outsider = index < 0;
+
+    if (!sameCut || outsider) {
+      // Rotaciona a lista para começar no par ativo. Sem isso, um par sorteado
+      // no fim da faixa obrigaria a prateleira a carregar todos os lotes até
+      // ele — centenas de fontes de uma vez só para mostrar o destaque.
+      list = outsider
+        ? [{ a, b }, ...list]
+        : [...list.slice(index), ...list.slice(0, index)];
+      index = 0;
+      current = list;
+      cursor = 0;
+      shelf.render(current, { a: state.a, b: state.b }, roles);
+      renderedContrast = state.contrast;
+    } else {
+      // Andar de seta não muda a lista: só o destaque se move.
+      current = list;
+      cursor = index;
+      shelf.setActive({ a: state.a, b: state.b });
     }
-    shelf.render(visible, { a: state.a, b: state.b }, roles);
+    shelf.reveal(cursor);
     history.replaceState(null, "", `${location.pathname}?${encodeState(state)}`);
   };
+
+  /** Avança ou volta dentro do corte atual, dando a volta nas pontas. */
+  const move = (delta: number): void => {
+    if (current.length < 2) return;
+    const next = (cursor + delta + current.length) % current.length;
+    const pair = current[next];
+    state = { ...state, a: pair.a.f, b: pair.b.f };
+    apply(true);
+  };
+
+  document.getElementById("prev")!.addEventListener("click", () => move(-1));
+  document.getElementById("next")!.addEventListener("click", () => move(1));
+
+  addEventListener("keydown", (ev) => {
+    const target = ev.target as HTMLElement | null;
+    if (target?.isContentEditable || target instanceof HTMLInputElement) return;
+    if (ev.key === "ArrowLeft") { ev.preventDefault(); move(-1); }
+    if (ev.key === "ArrowRight") { ev.preventDefault(); move(1); }
+  });
 
   controls.bind({
     onGenerate: () => {

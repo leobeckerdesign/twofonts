@@ -55,6 +55,38 @@ export class Shelf {
     this.appendBatch();
   }
 
+  /**
+   * Move o destaque sem reconstruir a fileira. Navegar pelas setas dentro do
+   * mesmo corte não muda a lista — recriar dezenas de chips a cada clique só
+   * geraria churn de DOM e reemissão de previews.
+   */
+  setActive(active: { a: string; b: string }): void {
+    this.active = active;
+    const chips = this.root.querySelectorAll<HTMLElement>(".chip:not(.chip--more)");
+    chips.forEach((chip, i) => {
+      const pair = this.pairs[i];
+      const on = Boolean(pair) && pair.a.f === active.a && pair.b.f === active.b;
+      chip.classList.toggle("is-active", on);
+      chip.setAttribute("aria-pressed", String(on));
+    });
+  }
+
+  /**
+   * Garante que o par de índice `i` esteja renderizado e visível. A navegação
+   * pelas setas pode saltar além do lote carregado; sem isto o chip ativo
+   * simplesmente não existiria na fileira.
+   */
+  reveal(index: number): void {
+    if (index < 0 || index >= this.pairs.length) return;
+    while (this.shown <= index && this.shown < this.pairs.length) this.appendBatch();
+
+    const chip = this.root.querySelectorAll<HTMLElement>(".chip:not(.chip--more)")[index];
+    if (!chip) return;
+    const target = chip.offsetLeft - (this.root.clientWidth - chip.offsetWidth) / 2;
+    const max = this.root.scrollWidth - this.root.clientWidth;
+    this.root.scrollTo({ left: Math.max(0, Math.min(max, target)), behavior: "smooth" });
+  }
+
   private appendBatch(): void {
     const token = this.token;
     this.moreButton?.remove();

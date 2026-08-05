@@ -1,143 +1,56 @@
-import type { PairState } from "../types";
-
-export interface ControlHandlers {
+interface Handlers {
   onGenerate: () => void;
   onContrast: (value: number) => void;
-  onToggleLock: (slot: "a" | "b") => void;
+  onCopyLink: () => void;
 }
 
-const INTERACTIVE_SELECTOR = [
-  "a[href]",
-  "button",
-  "input",
-  "select",
-  "textarea",
-  "summary",
-  "[contenteditable]:not([contenteditable='false'])",
-  "[role='button']",
-  "[role='checkbox']",
-  "[role='link']",
-  "[role='menuitem']",
-  "[role='option']",
-  "[role='radio']",
-  "[role='slider']",
-  "[role='textbox']",
-  "[tabindex]:not([tabindex='-1'])",
-].join(",");
-
-function requiredElement<T extends HTMLElement>(id: string): T {
-  const element = document.getElementById(id);
-  if (!element) throw new Error(`Elemento obrigatório #${id} não encontrado.`);
-  return element as T;
+function required<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Elemento obrigatório #${id} não encontrado.`);
+  return el as T;
 }
 
-function hasAccessibleName(element: HTMLElement): boolean {
-  return element.hasAttribute("aria-label") || element.hasAttribute("aria-labelledby");
-}
-
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof Element)) return false;
-  return target.closest(INTERACTIVE_SELECTOR) !== null;
-}
-
-function isSpace(event: KeyboardEvent): boolean {
-  return event.code === "Space" || event.key === " " || event.key === "Spacebar";
-}
-
+/**
+ * Sem travas e sem escolher qual fonte é título: o algoritmo entrega o par e
+ * cada card distribui os papéis. Restam o eixo de contraste e o gerar.
+ */
 export class Controls {
-  private readonly generate = requiredElement<HTMLButtonElement>("generate");
-  private readonly contrast = requiredElement<HTMLInputElement>("contrast");
-  private readonly lockA = requiredElement<HTMLButtonElement>("lock-a");
-  private readonly lockB = requiredElement<HTMLButtonElement>("lock-b");
-  private removeBinding: (() => void) | null = null;
+  private readonly contrast = required<HTMLInputElement>("contrast");
+  private readonly generate = required<HTMLButtonElement>("generate");
+  private readonly share = required<HTMLButtonElement>("share");
+  private readonly nameA = required("name-a");
+  private readonly nameB = required("name-b");
 
-  constructor() {
-    // Evita submits acidentais caso o HUD passe a viver dentro de um form.
-    this.generate.type = "button";
-    this.lockA.type = "button";
-    this.lockB.type = "button";
+  bind(handlers: Handlers): void {
+    this.generate.addEventListener("click", handlers.onGenerate);
+    this.share.addEventListener("click", handlers.onCopyLink);
+    this.contrast.addEventListener("input", () => {
+      handlers.onContrast(Number(this.contrast.value));
+    });
 
-    if (!hasAccessibleName(this.contrast)) {
-      this.contrast.setAttribute("aria-label", "Contraste tipográfico");
-    }
-    if (!hasAccessibleName(this.lockA)) {
-      this.lockA.setAttribute("aria-label", "Travar fonte da manchete");
-    }
-    if (!hasAccessibleName(this.lockB)) {
-      this.lockB.setAttribute("aria-label", "Travar fonte do corpo");
-    }
-    if (!this.generate.hasAttribute("aria-keyshortcuts")) {
-      this.generate.setAttribute("aria-keyshortcuts", "Space");
-    }
-  }
-
-  /** Substitui bindings anteriores para que reinicializações não dupliquem ações. */
-  bind(handlers: ControlHandlers): void {
-    this.removeBinding?.();
-
-    const onGenerate = () => handlers.onGenerate();
-    const onContrast = () => {
-      const value = this.contrast.valueAsNumber;
-      if (Number.isFinite(value)) handlers.onContrast(value);
-    };
-    const onLockA = () => handlers.onToggleLock("a");
-    const onLockB = () => handlers.onToggleLock("b");
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        !isSpace(event)
-        || event.defaultPrevented
-        || event.repeat
-        || event.isComposing
-        || event.altKey
-        || event.ctrlKey
-        || event.metaKey
-        || event.shiftKey
-        || isInteractiveTarget(event.target)
-      ) return;
-
-      event.preventDefault();
+    addEventListener("keydown", (ev) => {
+      const target = ev.target as HTMLElement | null;
+      if (ev.code !== "Space" || target?.isContentEditable) return;
+      // Barra de espaço em botão/slider já tem função nativa.
+      if (target instanceof HTMLInputElement || target instanceof HTMLButtonElement) return;
+      ev.preventDefault();
       handlers.onGenerate();
-    };
-
-    this.generate.addEventListener("click", onGenerate);
-    this.contrast.addEventListener("input", onContrast);
-    this.lockA.addEventListener("click", onLockA);
-    this.lockB.addEventListener("click", onLockB);
-    window.addEventListener("keydown", onKeyDown);
-
-    this.removeBinding = () => {
-      this.generate.removeEventListener("click", onGenerate);
-      this.contrast.removeEventListener("input", onContrast);
-      this.lockA.removeEventListener("click", onLockA);
-      this.lockB.removeEventListener("click", onLockB);
-      window.removeEventListener("keydown", onKeyDown);
-    };
+    });
   }
 
-  sync(state: PairState): void {
-    const contrast = Number.isFinite(state.contrast) ? state.contrast : 0.5;
-    const min = Number(this.contrast.min || 0);
-    const max = Number(this.contrast.max || 1);
-    const normalized = Math.min(max, Math.max(min, contrast));
-
-    this.contrast.value = String(normalized);
-    this.contrast.setAttribute(
-      "aria-valuetext",
-      `${Math.round(normalized * 100)}% de contraste`,
-    );
-    this.syncLock(this.lockA, state.lockA, "headline");
-    this.syncLock(this.lockB, state.lockB, "corpo");
+  sync(a: string, b: string, contrast: number): void {
+    this.nameA.textContent = a;
+    this.nameB.textContent = b;
+    // Não mexe no slider enquanto o usuário o arrasta.
+    if (document.activeElement !== this.contrast) {
+      this.contrast.value = String(contrast);
+    }
+    this.contrast.setAttribute("aria-valuetext", `${Math.round(contrast * 100)}% de contraste`);
   }
 
-  /** Remove listeners; útil em HMR, testes e desmontagem futura do HUD. */
-  destroy(): void {
-    this.removeBinding?.();
-    this.removeBinding = null;
-  }
-
-  private syncLock(button: HTMLButtonElement, locked: boolean, slot: string): void {
-    button.setAttribute("aria-pressed", String(locked));
-    button.classList.toggle("is-locked", locked);
-    button.title = `${locked ? "Destravar" : "Travar"} ${slot}`;
+  flash(message: string): void {
+    const previous = this.share.textContent;
+    this.share.textContent = message;
+    setTimeout(() => { this.share.textContent = previous; }, 1600);
   }
 }

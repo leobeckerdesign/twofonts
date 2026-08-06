@@ -79,6 +79,9 @@ vec2 rot(vec2 p, float a) {
   return mat2(c, -s, s, c) * p;
 }
 
+/** Proporção do quadro, para o campo não esticar em caixa larga. */
+vec2 aspect(vec2 uv) { return (uv - 0.5) * vec2(u_res.x / max(u_res.y, 1.0), 1.0); }
+
 // Cada família implementa esta. Devolve 0 a 1.
 float field(vec2 uv, float t);
 
@@ -146,10 +149,14 @@ export const FAMILIES: Family[] = [
     params: [["speed", 0.03, 0.16], ["scale", 0.7, 1.9], ["warp", 0.2, 0.9], ["grain", 0.0, 0.035]],
     frag: build(`float field(vec2 uv, float t) {
   float tt = t * u_p.x;
-  vec2 p = uv * u_p.y + u_seed.xy * 8.0;
-  p += u_p.z * vec2(snoise(p + tt * 0.5), snoise(p.yx - tt * 0.4));
-  float g = dot(normalize(vec2(0.72, 0.69)), p) * 0.32 + 0.5;
-  return clamp(g, 0.0, 1.0);
+  // A rampa é medida em torno do centro e reescalada para cobrir a faixa
+  // inteira. Somando escala à posição, ela ficava comprimida perto de 0.5 e o
+  // campo saía quase chapado.
+  vec2 p = uv - 0.5;
+  p += u_p.z * 0.4 * vec2(snoise(uv * u_p.y + tt * 0.5 + u_seed.x * 8.0),
+                          snoise(uv.yx * u_p.y - tt * 0.4 + u_seed.y * 5.0));
+  float g = dot(normalize(vec2(0.72, 0.69)), p) * 1.45 + 0.5;
+  return smoothstep(0.04, 0.96, g);
 }`),
   },
   {
@@ -162,6 +169,125 @@ export const FAMILIES: Family[] = [
   vec2 q = vec2(fbm(p + tt * 0.4), fbm(p + vec2(3.1, 7.7) - tt * 0.3));
   float f = fbm(p + u_p.z * q);
   return smoothstep(0.28, 0.86, f);
+}`),
+  },
+  {
+    // Dois focos respirando fora de fase. Radial puro, sem estrutura interna.
+    id: "bloom",
+    label: "florada",
+    params: [["speed", 0.05, 0.35], ["scale", 0.8, 2.2], ["falloff", 0.6, 2.0], ["grain", 0.0, 0.03]],
+    frag: build(`float field(vec2 uv, float t) {
+  float tt = t * u_p.x;
+  vec2 a = aspect(uv) - vec2(-0.14 + 0.12 * sin(tt * 0.7 + u_seed.x * 6.28),
+                             -0.06 + 0.10 * cos(tt * 0.5 + u_seed.y * 6.28));
+  vec2 b = aspect(uv) - vec2(0.22 - 0.09 * cos(tt * 0.6 + u_seed.y * 4.1),
+                             0.18 + 0.08 * sin(tt * 0.43 + u_seed.z * 5.2));
+  float g = exp(-dot(a, a) * u_p.y * u_p.z * 2.6);
+  g += 0.6 * exp(-dot(b, b) * u_p.y * u_p.z * 4.4);
+  return clamp(g, 0.0, 1.0);
+}`),
+  },
+  {
+    // Camadas sedimentares. Os patamares são largos de propósito: com
+    // frequência alta isto vira listra fina, que é o caso reprovado.
+    id: "strata",
+    label: "estratos",
+    params: [["speed", 0.02, 0.12], ["bands", 0.9, 2.6], ["tilt", 0.15, 0.7], ["grain", 0.0, 0.03]],
+    frag: build(`float field(vec2 uv, float t) {
+  float tt = t * u_p.x;
+  float y = uv.y * u_p.y
+          + snoise(vec2(uv.x * 1.3, tt * 0.4 + u_seed.x * 5.0)) * u_p.z
+          + uv.x * u_p.z * 0.4;
+  return smoothstep(0.12, 0.88, sin(y * 6.2831) * 0.5 + 0.5);
+}`),
+  },
+  {
+    // Luz de água. O 1 - abs(n) cria cristas, e o quadrado afina só as cristas.
+    id: "caustics",
+    label: "cáustica",
+    params: [["speed", 0.05, 0.3], ["scale", 1.0, 2.6], ["warp", 0.3, 1.1], ["grain", 0.0, 0.025]],
+    frag: build(`float field(vec2 uv, float t) {
+  float tt = t * u_p.x;
+  vec2 p = uv * u_p.y + u_seed.xy * 6.0;
+  float a = snoise(p + vec2(tt, 0.0));
+  float b = snoise(p.yx * 1.24 - vec2(0.0, tt * 0.8));
+  float c = snoise(p + vec2(a, b) * u_p.z);
+  float k = 1.0 - abs(c);
+  return smoothstep(0.4, 1.0, k * k);
+}`),
+  },
+  {
+    // Malha de gradiente: quatro bolhas macias que se cruzam e se somam.
+    id: "mesh",
+    label: "malha",
+    params: [["speed", 0.04, 0.26], ["spread", 1.2, 4.0], ["gain", 0.5, 1.2], ["grain", 0.0, 0.03]],
+    frag: build(`float field(vec2 uv, float t) {
+  float tt = t * u_p.x;
+  float g = 0.0;
+  for (int i = 0; i < 4; i++) {
+    float fi = float(i);
+    vec2 c = vec2(0.40 * sin(tt * (0.4 + fi * 0.13) + u_seed.x * 6.28 + fi * 2.1),
+                  0.40 * cos(tt * (0.33 + fi * 0.17) + u_seed.y * 6.28 + fi * 1.7));
+    vec2 d = aspect(uv) - c;
+    g += exp(-dot(d, d) * u_p.y * 2.2) * (0.55 + 0.45 * sin(fi * 2.0 + u_seed.z * 6.28));
+  }
+  return clamp(g * u_p.z, 0.0, 1.0);
+}`),
+  },
+  {
+    // Marulho: três senoides longas cruzando. Interferência de baixa frequência.
+    id: "swell",
+    label: "marulho",
+    params: [["speed", 0.05, 0.28], ["length", 0.7, 2.0], ["angle", 0.0, 3.14], ["grain", 0.0, 0.03]],
+    frag: build(`float field(vec2 uv, float t) {
+  float tt = t * u_p.x;
+  vec2 p = rot(uv - 0.5, u_p.z) + 0.5;
+  float w1 = sin((p.x * u_p.y + tt) * 3.1416);
+  float w2 = sin((p.y * u_p.y * 0.72 - tt * 0.8) * 3.1416 + u_seed.x * 6.28);
+  float w3 = sin(((p.x + p.y) * u_p.y * 0.5 + tt * 0.6) * 3.1416 + u_seed.y * 6.28);
+  return clamp((w1 + w2 + w3) / 6.0 + 0.5, 0.0, 1.0);
+}`),
+  },
+  {
+    // Rampa quase lisa. Aqui o interesse é a granulação, não a forma, então
+    // esta é a única família com faixa de grão larga.
+    id: "grain",
+    label: "grão",
+    params: [["drift", 0.01, 0.08], ["scale", 0.5, 1.6], ["angle", 0.0, 3.14], ["grain", 0.02, 0.09]],
+    frag: build(`float field(vec2 uv, float t) {
+  vec2 p = rot(uv - 0.5, u_p.z);
+  float ramp = smoothstep(-0.62, 0.62, p.x + p.y * 0.45 + t * u_p.x * 0.2);
+  return clamp(ramp + snoise(uv * u_p.y + u_seed.xy * 4.0) * 0.16, 0.0, 1.0);
+}`),
+  },
+  {
+    // Redemoinho lento. A queda radial mata a frequência alta do centro.
+    id: "vortex",
+    label: "vórtice",
+    params: [["speed", 0.04, 0.24], ["twist", 0.6, 2.2], ["arms", 2.0, 5.0], ["grain", 0.0, 0.03]],
+    frag: build(`float field(vec2 uv, float t) {
+  float tt = t * u_p.x;
+  vec2 d = aspect(uv);
+  float r = length(d);
+  float a = atan(d.y, d.x);
+  float spiral = sin(a * u_p.z + r * u_p.y * 5.0 - tt * 2.0 + u_seed.x * 6.28);
+  return clamp(0.5 + 0.5 * spiral * smoothstep(0.95, 0.05, r), 0.0, 1.0);
+}`),
+  },
+  {
+    // Cristas de duna: ruído dobrado em 1 - abs, somado em três oitavas.
+    id: "dunes",
+    label: "dunas",
+    params: [["speed", 0.02, 0.12], ["scale", 0.7, 2.0], ["gain", 0.7, 1.3], ["grain", 0.0, 0.03]],
+    frag: build(`float field(vec2 uv, float t) {
+  vec2 p = uv * u_p.y + vec2(t * u_p.x * 0.5, u_seed.x * 7.0);
+  float v = 0.0, a = 0.55;
+  for (int i = 0; i < 3; i++) {
+    v += a * (1.0 - abs(snoise(p)));
+    p = p * 2.07 + vec2(1.3, -0.7);
+    a *= 0.5;
+  }
+  return smoothstep(0.42, 1.0, v * u_p.z);
 }`),
   },
 ];

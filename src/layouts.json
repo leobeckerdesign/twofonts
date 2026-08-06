@@ -305,7 +305,7 @@
         },
         {
           "type": "video",
-          "family": "silk",
+          "family": "caustics",
           "ratio": 2.6,
           "bleed": true,
           "mb": 4
@@ -406,7 +406,7 @@
         },
         {
           "type": "shader",
-          "family": "drift",
+          "family": "dunes",
           "ratio": 2.4,
           "bleed": true,
           "mt": 18
@@ -552,7 +552,7 @@
         },
         {
           "type": "image",
-          "family": "veil",
+          "family": "strata",
           "motion": "still",
           "ratio": 3,
           "bleed": true,
@@ -587,7 +587,7 @@
       "blocks": [
         {
           "type": "shader",
-          "family": "veil",
+          "family": "mesh",
           "flow": "absolute",
           "inset": [
             0,
@@ -641,7 +641,7 @@
         },
         {
           "type": "video",
-          "family": "aurora",
+          "family": "swell",
           "ratio": 2.2,
           "bleed": true,
           "mb": 4

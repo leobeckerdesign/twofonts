@@ -18,9 +18,9 @@
   aside { border-right:1px solid var(--line); padding:22px 20px; display:flex; flex-direction:column; gap:22px; }
   main { padding:22px 26px; display:flex; flex-direction:column; gap:18px; min-width:0; }
 
-  .fams { display:flex; gap:4px; }
+  .fams { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
   .fams button {
-    flex:1; background:none; border:1px solid var(--line); color:var(--muted);
+    background:none; border:1px solid var(--line); color:var(--muted);
     font:inherit; font-size:10px; letter-spacing:.16em; text-transform:uppercase;
     padding:9px 6px; cursor:pointer; transition:color .2s,border-color .2s;
   }
@@ -152,7 +152,7 @@ band.ctx = band.canvas.getContext("2d");
 const famBar = document.getElementById("fams");
 for (const fam of FAMILIES) {
   const b = document.createElement("button");
-  b.textContent = fam.id;
+  b.textContent = fam.label ?? fam.id;
   b.onclick = () => { family = fam; buildControls(); paintBar(); };
   famBar.append(b);
 }

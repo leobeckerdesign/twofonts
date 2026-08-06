@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>twofonts · bancada de shaders</title>
+<style>
+  :root { --bg:#0b0b0d; --paper:#e9e5dd; --muted:#8a877f; --line:rgba(233,229,221,.13); --accent:#f05524; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--paper); min-height:100vh;
+    font:13px/1.5 ui-monospace,"SFMono-Regular",monospace;
+    -webkit-font-smoothing:antialiased;
+    display:grid; grid-template-columns:280px 1fr; gap:0;
+  }
+  h1 { font-size:11px; letter-spacing:.24em; text-transform:uppercase; font-weight:400; }
+  h1 span { color:var(--accent); }
+  aside { border-right:1px solid var(--line); padding:22px 20px; display:flex; flex-direction:column; gap:22px; }
+  main { padding:22px 26px; display:flex; flex-direction:column; gap:18px; min-width:0; }
+
+  .fams { display:flex; gap:4px; }
+  .fams button {
+    flex:1; background:none; border:1px solid var(--line); color:var(--muted);
+    font:inherit; font-size:10px; letter-spacing:.16em; text-transform:uppercase;
+    padding:9px 6px; cursor:pointer; transition:color .2s,border-color .2s;
+  }
+  .fams button:hover { color:var(--paper); border-color:var(--paper); }
+  .fams button[aria-pressed="true"] { color:#14120f; background:var(--accent); border-color:var(--accent); }
+
+  .ctl { display:flex; flex-direction:column; gap:6px; }
+  .ctl__head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  .ctl__name { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .ctl__val { font-variant-numeric:tabular-nums; }
+  .ctl__range { font-size:10px; color:var(--muted); opacity:.6; }
+  input[type=range] { width:100%; accent-color:var(--accent); margin:0; }
+
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  figure { display:flex; flex-direction:column; gap:7px; min-width:0; }
+  figure canvas { width:100%; aspect-ratio:3/2; display:block; background:#151517; }
+  figcaption { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+
+  .wide canvas { aspect-ratio:16/6; }
+  pre {
+    border:1px solid var(--line); padding:14px 16px; overflow-x:auto;
+    color:var(--muted); font-size:12px; white-space:pre-wrap; word-break:break-all;
+  }
+  .hint { font-size:11px; color:var(--muted); line-height:1.7; }
+  .bad { color:var(--accent); }
+  button.ghost {
+    background:none; border:1px solid var(--line); color:var(--muted); font:inherit;
+    font-size:10px; letter-spacing:.16em; text-transform:uppercase; padding:9px 14px; cursor:pointer;
+  }
+  button.ghost:hover { color:var(--paper); border-color:var(--paper); }
+</style>
+</head>
+<body>
+<aside>
+  <h1>bancada de <span>shaders</span></h1>
+  <div class="fams" id="fams"></div>
+  <div id="ctls" style="display:flex;flex-direction:column;gap:18px"></div>
+  <button class="ghost" id="reseed">outra semente</button>
+  <p class="hint">
+    Cada faixa aqui é a que o card sorteia sozinho. Ajuste até gostar e me
+    mande o bloco de baixo: eu gravo como faixa nova da família.
+  </p>
+</aside>
+
+<main>
+  <div class="grid" id="tiles"></div>
+  <figure class="wide">
+    <canvas id="band"></canvas>
+    <figcaption>faixa larga · proporção de banda dentro do card</figcaption>
+  </figure>
+  <pre id="out"></pre>
+</main>
+
+<script type="module">
+import { FAMILIES, PALETTE } from "/src/media/families.ts";
+
+const VERT = `attribute vec2 p; void main(){ gl_Position = vec4(p,0.0,1.0); }`;
+const KINDS = ["paper", "ink", "accent"];
+const MAX = 1024;
+
+const off = document.createElement("canvas");
+off.width = MAX; off.height = MAX;
+const gl = off.getContext("webgl", { antialias:false, depth:false, preserveDrawingBuffer:true });
+
+const out = document.getElementById("out");
+if (!gl) {
+  out.innerHTML = '<span class="bad">Sem WebGL neste navegador. A bancada precisa dele.</span>';
+  throw new Error("no webgl");
+}
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+
+const cache = new Map();
+function programFor(fam) {
+  if (cache.has(fam.id)) return cache.get(fam.id);
+  const vs = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vs, VERT); gl.compileShader(vs);
+  const fs = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fs, fam.frag); gl.compileShader(fs);
+  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+    out.innerHTML = `<span class="bad">${fam.id} não compila:\n${gl.getShaderInfoLog(fs)}</span>`;
+    cache.set(fam.id, null); return null;
+  }
+  const pr = gl.createProgram();
+  gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+  gl.deleteShader(vs); gl.deleteShader(fs);
+  const ok = gl.getProgramParameter(pr, gl.LINK_STATUS) ? pr : null;
+  cache.set(fam.id, ok);
+  return ok;
+}
+
+// ---- estado ----
+let family = FAMILIES[0];
+let values = [];
+let seed = [Math.random(), Math.random(), Math.random()];
+
+const tiles = KINDS.map((kind) => {
+  const fig = document.createElement("figure");
+  const canvas = document.createElement("canvas");
+  const cap = document.createElement("figcaption");
+  cap.textContent = kind;
+  fig.append(canvas, cap);
+  document.getElementById("tiles").append(fig);
+  return { kind, canvas, ctx: canvas.getContext("2d") };
+});
+const band = { kind: "ink", canvas: document.getElementById("band") };
+band.ctx = band.canvas.getContext("2d");
+
+// ---- interface ----
+const famBar = document.getElementById("fams");
+for (const fam of FAMILIES) {
+  const b = document.createElement("button");
+  b.textContent = fam.id;
+  b.onclick = () => { family = fam; buildControls(); paintBar(); };
+  famBar.append(b);
+}
+const paintBar = () => {
+  [...famBar.children].forEach((b, i) =>
+    b.setAttribute("aria-pressed", String(FAMILIES[i].id === family.id)));
+};
+
+function buildControls() {
+  const host = document.getElementById("ctls");
+  host.innerHTML = "";
+  values = family.params.map(([, min, max]) => min + (max - min) / 2);
+
+  family.params.forEach(([name, min, max], i) => {
+    const wrap = document.createElement("div");
+    wrap.className = "ctl";
+    wrap.innerHTML =
+      `<div class="ctl__head"><span class="ctl__name">${name}</span>` +
+      `<span class="ctl__val"></span></div>` +
+      `<input type="range" min="${min}" max="${max}" step="${(max - min) / 200}" value="${values[i]}">` +
+      `<div class="ctl__range">faixa ${min} a ${max}</div>`;
+    const val = wrap.querySelector(".ctl__val");
+    const range = wrap.querySelector("input");
+    const show = () => { val.textContent = Number(range.value).toFixed(3); };
+    range.oninput = () => { values[i] = Number(range.value); show(); report(); };
+    show();
+    host.append(wrap);
+  });
+  report();
+}
+
+function report() {
+  const named = Object.fromEntries(family.params.map(([n], i) => [n, +values[i].toFixed(3)]));
+  out.textContent =
+    `família: ${family.id}\n` +
+    `params: ${JSON.stringify(named)}\n\n` +
+    `no card, isto vira:\n` +
+    `{ "type": "shader", "family": "${family.id}", "ratio": 2.4,\n` +
+    `  "params": ${JSON.stringify(named)} }`;
+}
+
+document.getElementById("reseed").onclick = () => {
+  seed = [Math.random(), Math.random(), Math.random()];
+};
+
+// ---- desenho ----
+function size(canvas) {
+  const dpr = Math.min(Math.max(devicePixelRatio || 1, 1), 1.5);
+  const w = Math.max(1, Math.min(MAX, Math.round(canvas.clientWidth * dpr)));
+  const h = Math.max(1, Math.min(MAX, Math.round(canvas.clientHeight * dpr)));
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  return [w, h];
+}
+
+function draw(tile, t) {
+  const pr = programFor(family);
+  if (!pr) return;
+  const [w, h] = size(tile.canvas);
+  const pal = PALETTE[tile.kind];
+
+  gl.useProgram(pr);
+  const loc = gl.getAttribLocation(pr, "p");
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const u = (n) => gl.getUniformLocation(pr, n);
+  gl.viewport(0, 0, w, h);
+  gl.uniform2f(u("u_res"), w, h);
+  gl.uniform1f(u("u_time"), t / 1000);
+  gl.uniform3f(u("u_seed"), seed[0], seed[1], seed[2]);
+  gl.uniform3fv(u("u_c0"), pal[0]);
+  gl.uniform3fv(u("u_c1"), pal[1]);
+  gl.uniform3fv(u("u_c2"), pal[2]);
+  gl.uniform4f(u("u_p"), values[0] ?? 0, values[1] ?? 0, values[2] ?? 0, values[3] ?? 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  tile.ctx.clearRect(0, 0, w, h);
+  tile.ctx.drawImage(off, 0, MAX - h, w, h, 0, 0, w, h);
+}
+
+let last = -1e9;
+function loop(t) {
+  if (t - last >= 1000 / 30) {
+    last = t;
+    for (const tile of tiles) draw(tile, t);
+    draw(band, t);
+  }
+  requestAnimationFrame(loop);
+}
+
+paintBar();
+buildControls();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

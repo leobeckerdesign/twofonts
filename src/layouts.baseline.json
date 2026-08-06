@@ -14,7 +14,6 @@
     {
       "id": "poster", "kind": "ink", "w": 390, "bodyScale": 0.95, "titleScale": 1.45,
       "blocks": [
-        { "type": "shader", "family": "flow", "flow": "absolute", "inset": [0, 0, 0, 0], "opacity": 0.6 },
         { "type": "label", "text": "pôster" },
         { "type": "title", "text": "Aa" },
         { "type": "title", "scale": 0.26, "text": "{{fox}}" }
@@ -93,8 +92,7 @@
       "id": "convite", "kind": "accent", "w": 360, "bodyScale": 0.9, "titleScale": 0.68,
       "blocks": [
         { "type": "label", "text": "convite" },
-        { "type": "video", "family": "scan", "ratio": 2.6, "bleed": true, "mb": 4 },
-        { "type": "title", "mt": 18, "text": "Noite de<br/>Tipografia" },
+        { "type": "title", "text": "Noite de<br/>Tipografia" },
         { "type": "body", "mt": 12, "text": "Quinta, 20h · Rua da Consolação, 1200" },
         { "type": "stamp", "scale": 0.72, "text": "entrada franca" }
       ]
@@ -116,7 +114,6 @@
       "blocks": [
         { "type": "label", "text": "capa" },
         { "type": "title", "text": "O peso<br/>da forma" },
-        { "type": "shader", "family": "flow", "ratio": 2.4, "bleed": true, "mt": 18 },
         { "type": "rule" },
         { "type": "body", "text": "Ensaios sobre tipografia aplicada" },
         { "type": "body", "scale": 0.78, "mt": 22, "tracking": 0.16, "caps": true, "text": "Edições Palco" }
@@ -161,8 +158,7 @@
       "id": "etiqueta", "kind": "paper", "w": 350, "bodyScale": 0.85, "titleScale": 0.6,
       "blocks": [
         { "type": "label", "text": "etiqueta" },
-        { "type": "image", "family": "grid", "motion": "still", "ratio": 3.0, "bleed": true, "mb": 4 },
-        { "type": "title", "mt": 18, "text": "Café<br/>Torrado" },
+        { "type": "title", "text": "Café<br/>Torrado" },
         { "type": "rule" },
         { "type": "body", "text": "Origem única · Torra média · Moagem fina" },
         { "type": "body", "num": true, "mt": 6, "text": "250 g ℮" }
@@ -171,7 +167,6 @@
     {
       "id": "hero", "kind": "ink", "w": 500, "bodyScale": 0.95, "titleScale": 0.82,
       "blocks": [
-        { "type": "shader", "family": "flow", "flow": "absolute", "inset": [0, 0, 0, 0], "opacity": 0.42 },
         { "type": "label", "text": "hero" },
         { "type": "title", "text": "Componha<br/>com intenção" },
         { "type": "body", "text": "{{para:96}}" },
@@ -185,8 +180,7 @@
       "id": "legenda", "kind": "paper", "w": 330, "bodyScale": 0.8, "titleScale": 0.42,
       "blocks": [
         { "type": "label", "text": "legenda" },
-        { "type": "video", "family": "scan", "ratio": 2.2, "bleed": true, "mb": 4 },
-        { "type": "title", "mt": 18, "text": "Detalhe da haste" },
+        { "type": "title", "text": "Detalhe da haste" },
         { "type": "body", "text": "{{para:150}}" },
         { "type": "body", "scale": 0.76, "mt": 12, "tracking": 0.16, "caps": true, "opacity": 0.55, "text": "fig. 04 — {{titleFont}} / {{bodyFont}}" }
       ]

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { LAYOUTS } from "./layouts";
+import baseline from "./layouts.baseline.json";
 import { LEGACY_LAYOUTS } from "./layouts.legacy";
 import { renderBlocks, type RenderContext } from "./render";
+import type { LayoutsFile } from "./spec";
 import type { FontMeta } from "./types";
 
 /**
@@ -15,6 +16,11 @@ import type { FontMeta } from "./types";
  * O portão é equivalência estrutural: mesmos elementos, mesmas classes, mesmo
  * texto, e mesmas propriedades CSS efetivas. O `style` é comparado como mapa de
  * propriedades, nunca como string, então ordem e abreviação não contam.
+ *
+ * Compara contra `layouts.baseline.json`, que é a tradução congelada dos 18
+ * cards originais, e não contra o `layouts.json` vivo. A prova é da TRADUÇÃO:
+ * uma vez feita, o spec pode ganhar mídia e mudar de composição sem que isso
+ * apague a evidência de que a troca por dado não alterou nada.
  */
 
 /** `.16em` e `0.16em` são o mesmo valor; `0px` e `0` também. */
@@ -99,14 +105,24 @@ const CONTEXTS: { name: string; c: RenderContext }[] = [
   },
 ];
 
+const BASE = (baseline as LayoutsFile).cards;
+const render = (i: number, c: RenderContext): string => renderBlocks(BASE[i].blocks, c);
+
 describe("gramática dos cards", () => {
   it("cobre os mesmos 18 cards, na mesma ordem", () => {
-    expect(LAYOUTS.map((l) => l.id)).toEqual(LEGACY_LAYOUTS.map((l) => l.id));
+    expect(BASE.map((card) => card.id)).toEqual(LEGACY_LAYOUTS.map((l) => l.id));
   });
 
   it("preserva kind, largura e as escalas de cada card", () => {
     for (const [i, legacy] of LEGACY_LAYOUTS.entries()) {
-      expect({ ...LAYOUTS[i], html: undefined }).toEqual({ ...legacy, html: undefined });
+      const { id, kind, w, bodyScale, titleScale } = BASE[i];
+      expect({ id, kind, w, bodyScale, titleScale }).toEqual({
+        id: legacy.id,
+        kind: legacy.kind,
+        w: legacy.w,
+        bodyScale: legacy.bodyScale,
+        titleScale: legacy.titleScale,
+      });
     }
   });
 
@@ -114,19 +130,19 @@ describe("gramática dos cards", () => {
     describe(`contexto ${name}`, () => {
       for (const [i, legacy] of LEGACY_LAYOUTS.entries()) {
         it(`card ${legacy.id} sai equivalente`, () => {
-          expect(normalize(LAYOUTS[i].html(c))).toBe(normalize(legacy.html(c)));
+          expect(normalize(render(i, c))).toBe(normalize(legacy.html(c)));
         });
       }
     });
   }
 
   it("escapa nome de família e deixa markup literal passar", () => {
-    const nome = LAYOUTS[0].html(CONTEXTS[1].c);
+    const nome = render(0, CONTEXTS[1].c);
     expect(nome).toContain("A &amp; B &lt;script&gt; &quot;x&quot;");
     expect(nome).not.toContain("<script>");
 
-    const citacao = LAYOUTS.find((l) => l.id === "citacao");
-    expect(citacao?.html(CONTEXTS[0].c)).toContain("<br/>");
+    const citacao = BASE.findIndex((card) => card.id === "citacao");
+    expect(render(citacao, CONTEXTS[0].c)).toContain("<br/>");
   });
 
   it("deixa token desconhecido visível em vez de sumir com ele", () => {

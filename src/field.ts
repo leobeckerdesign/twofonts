@@ -1,6 +1,7 @@
 import gsap from "gsap";
 import { Observer } from "gsap/Observer";
 import { LAYOUTS, type Layout, type LayoutContext } from "./layouts";
+import { initMedia, type MediaEngine } from "./media/shaders";
 import { assignRoles, sizeRatio } from "./roles";
 import type { FontMeta, WeightRole } from "./types";
 
@@ -72,6 +73,8 @@ export class Field {
 
   private readonly pointer = { tx: 0, ty: 0, x: 0, y: 0, px: -9999, py: -9999, inside: false };
   private readonly reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** Null quando o WebGL não sobe; aí as caixas ficam no gradiente do CSS. */
+  private readonly media: MediaEngine | null = initMedia();
 
   constructor(private readonly root: HTMLElement) {
     this.build();
@@ -143,6 +146,7 @@ export class Field {
   destroy(): void {
     if (this.frame !== null) cancelAnimationFrame(this.frame);
     this.frame = null;
+    this.media?.destroy();
     gsap.killTweensOf(this.slots.map((s) => s.card));
   }
 
@@ -158,6 +162,9 @@ export class Field {
       const card = document.createElement("article");
       card.className = `card card--${layout.kind}`;
       card.setAttribute("aria-label", `Exemplo: ${layout.id}`);
+      // O motor de mídia lê os dois: o id semeia o sorteio, o tipo dá a paleta.
+      card.dataset.card = layout.id;
+      card.dataset.kind = layout.kind;
 
       zoom.appendChild(card);
       par.appendChild(zoom);
@@ -215,6 +222,9 @@ export class Field {
       s.x = this.margin + lanes[s.index % lanes.length] * (fw - s.w - this.margin * 2);
       s.base = s.index * this.spacing;
     }
+
+    // Só reamostra o que mudou de tamanho; as sementes ficam onde estão.
+    this.media?.measure();
   };
 
   private floatIdle(): void {
@@ -261,6 +271,8 @@ export class Field {
     }
 
     this.layout();
+    // Depois do layout: a caixa só tem tamanho quando o card já mediu.
+    this.media?.scan(this.root, `${pair.a.f}|${pair.b.f}|${pair.contrast}`);
     return this.onFontsNeeded?.([...needed]);
   }
 

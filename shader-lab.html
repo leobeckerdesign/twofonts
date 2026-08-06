@@ -39,6 +39,14 @@
   figure canvas { width:100%; aspect-ratio:3/2; display:block; background:#151517; }
   figcaption { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
 
+  /* Texto de prova por cima do shader: legibilidade não se julga no vazio. */
+  .probe { position:relative; }
+  .over { position:absolute; inset:0; padding:16px 18px; display:flex;
+          flex-direction:column; justify-content:flex-end; gap:4px; pointer-events:none; }
+  .over b { font-weight:400; font-size:26px; line-height:1.05; letter-spacing:-.02em; }
+  .over span { font-size:10px; letter-spacing:.14em; text-transform:uppercase; opacity:.8; }
+  .ok { color:#7fbf8f; } .fail { color:var(--accent); }
+
   .wide canvas { aspect-ratio:16/6; }
   pre {
     border:1px solid var(--line); padding:14px 16px; overflow-x:auto;
@@ -75,7 +83,8 @@
 </main>
 
 <script type="module">
-import { FAMILIES, PALETTE } from "/src/media/families.ts";
+import { FAMILIES } from "/src/media/families.ts";
+import { PALETTES, luminanceBand, contrastRatio, MIN_RATIO } from "/src/media/legibility.ts";
 
 const VERT = `attribute vec2 p; void main(){ gl_Position = vec4(p,0.0,1.0); }`;
 const KINDS = ["paper", "ink", "accent"];
@@ -119,16 +128,24 @@ let family = FAMILIES[0];
 let values = [];
 let seed = [Math.random(), Math.random(), Math.random()];
 
+let amount = 1;
+
 const tiles = KINDS.map((kind) => {
   const fig = document.createElement("figure");
   const canvas = document.createElement("canvas");
   const cap = document.createElement("figcaption");
-  cap.textContent = kind;
-  fig.append(canvas, cap);
+  const probe = document.createElement("div");
+  probe.className = "probe";
+  // Texto de verdade por cima: legibilidade não se julga no vazio.
+  const over = document.createElement("div");
+  over.className = "over";
+  over.innerHTML = `<b>Hamburgefonstiv</b><span>${kind} · texto de prova sobre o shader</span>`;
+  probe.append(canvas, over);
+  fig.append(probe, cap);
   document.getElementById("tiles").append(fig);
-  return { kind, canvas, ctx: canvas.getContext("2d") };
+  return { kind, canvas, ctx: canvas.getContext("2d"), cap, over };
 });
-const band = { kind: "ink", canvas: document.getElementById("band") };
+const band = { kind: "ink", canvas: document.getElementById("band"), cap: null, over: null };
 band.ctx = band.canvas.getContext("2d");
 
 // ---- interface ----
@@ -164,11 +181,28 @@ function buildControls() {
     show();
     host.append(wrap);
   });
+
+  // Intensidade não é da família: é o quanto o campo pode se afastar do fundo.
+  const wrap = document.createElement("div");
+  wrap.className = "ctl";
+  wrap.innerHTML =
+    `<div class="ctl__head"><span class="ctl__name">intensidade</span>` +
+    `<span class="ctl__val"></span></div>` +
+    `<input type="range" min="0" max="1" step="0.01" value="${amount}">` +
+    `<div class="ctl__range">0 = fundo chapado, 1 = envelope inteiro</div>`;
+  const val = wrap.querySelector(".ctl__val");
+  const range = wrap.querySelector("input");
+  const show = () => { val.textContent = Number(range.value).toFixed(2); };
+  range.oninput = () => { amount = Number(range.value); show(); report(); };
+  show();
+  host.append(wrap);
+
   report();
 }
 
 function report() {
   const named = Object.fromEntries(family.params.map(([n], i) => [n, +values[i].toFixed(3)]));
+  if (amount !== 1) named.amount = +amount.toFixed(2);
   out.textContent =
     `família: ${family.id}\n` +
     `params: ${JSON.stringify(named)}\n\n` +
@@ -195,7 +229,7 @@ function draw(tile, t) {
   const pr = programFor(family);
   if (!pr) return;
   const [w, h] = size(tile.canvas);
-  const pal = PALETTE[tile.kind];
+  const pal = PALETTES[tile.kind];
 
   gl.useProgram(pr);
   const loc = gl.getAttribLocation(pr, "p");
@@ -203,14 +237,17 @@ function draw(tile, t) {
   gl.enableVertexAttribArray(loc);
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 
+  const band = luminanceBand(tile.kind);
   const u = (n) => gl.getUniformLocation(pr, n);
   gl.viewport(0, 0, w, h);
   gl.uniform2f(u("u_res"), w, h);
   gl.uniform1f(u("u_time"), t / 1000);
   gl.uniform3f(u("u_seed"), seed[0], seed[1], seed[2]);
-  gl.uniform3fv(u("u_c0"), pal[0]);
-  gl.uniform3fv(u("u_c1"), pal[1]);
-  gl.uniform3fv(u("u_c2"), pal[2]);
+  gl.uniform3fv(u("u_bg"), pal.bg);
+  gl.uniform3fv(u("u_near"), pal.near);
+  gl.uniform3fv(u("u_accent"), pal.accent);
+  gl.uniform2f(u("u_band"), band[0], band[1]);
+  gl.uniform1f(u("u_amount"), amount);
   gl.uniform4f(u("u_p"), values[0] ?? 0, values[1] ?? 0, values[2] ?? 0, values[3] ?? 0);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -218,11 +255,41 @@ function draw(tile, t) {
   tile.ctx.drawImage(off, 0, MAX - h, w, h, 0, 0, w, h);
 }
 
+/**
+ * Pior contraste do quadro contra a cor do texto do card. É a única pergunta
+ * que importa aqui: existe algum pixel onde a letra deixaria de ser lida?
+ */
+function worstContrast(tile) {
+  const { width: w, height: h } = tile.canvas;
+  if (w === 0 || h === 0) return null;
+  const d = tile.ctx.getImageData(0, 0, w, h).data;
+  const text = PALETTES[tile.kind].text;
+  let worst = Infinity;
+  // Amostragem esparsa: o campo é de baixa frequência, cada 4º pixel basta.
+  for (let i = 0; i < d.length; i += 16) {
+    const r = contrastRatio([d[i] / 255, d[i + 1] / 255, d[i + 2] / 255], text);
+    if (r < worst) worst = r;
+  }
+  return worst;
+}
+
+const css = (c) => `rgb(${c.map((v) => Math.round(v * 255)).join(",")})`;
+
 let last = -1e9;
 function loop(t) {
   if (t - last >= 1000 / 30) {
     last = t;
-    for (const tile of tiles) draw(tile, t);
+    for (const tile of tiles) {
+      draw(tile, t);
+      const pal = PALETTES[tile.kind];
+      tile.over.style.color = css(pal.text);
+      const r = worstContrast(tile);
+      const ok = r !== null && r >= MIN_RATIO;
+      tile.cap.innerHTML =
+        `${tile.kind} · pior contraste ` +
+        `<span class="${ok ? "ok" : "fail"}">${r === null ? "?" : r.toFixed(2)}:1</span>` +
+        ` (mínimo ${MIN_RATIO})`;
+    }
     draw(band, t);
   }
   requestAnimationFrame(loop);

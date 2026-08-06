@@ -1,194 +1,669 @@
 {
   "version": 1,
-  "frozen": { "a": "Barlow", "b": "Bitter", "contrast": 0.556, "ratio": 2.5786 },
+  "frozen": {
+    "a": "Barlow",
+    "b": "Bitter",
+    "contrast": 0.556,
+    "ratio": 2.5786
+  },
   "cards": [
     {
-      "id": "nome", "kind": "paper", "w": 500, "bodyScale": 1, "titleScale": 1,
+      "id": "nome",
+      "kind": "paper",
+      "w": 500,
+      "bodyScale": 1,
+      "titleScale": 1,
       "blocks": [
-        { "type": "label", "text": "{{titleFont}} + {{bodyFont}}" },
-        { "type": "title", "text": "{{titleFont}}" },
-        { "type": "title", "scale": 0.42, "text": "{{fox}}" },
-        { "type": "body", "text": "{{para}}" }
+        {
+          "type": "label",
+          "text": "{{titleFont}} + {{bodyFont}}"
+        },
+        {
+          "type": "title",
+          "text": "{{titleFont}}"
+        },
+        {
+          "type": "title",
+          "scale": 0.42,
+          "text": "{{fox}}"
+        },
+        {
+          "type": "body",
+          "text": "{{para}}"
+        }
       ]
     },
     {
-      "id": "poster", "kind": "ink", "w": 390, "bodyScale": 0.95, "titleScale": 1.45,
+      "id": "poster",
+      "kind": "ink",
+      "w": 390,
+      "bodyScale": 0.95,
+      "titleScale": 1.45,
       "blocks": [
-        { "type": "shader", "family": "flow", "flow": "absolute", "inset": [0, 0, 0, 0], "opacity": 0.6 },
-        { "type": "label", "text": "pôster" },
-        { "type": "title", "text": "Aa" },
-        { "type": "title", "scale": 0.26, "text": "{{fox}}" }
-      ]
-    },
-    {
-      "id": "editorial", "kind": "paper", "w": 460, "bodyScale": 0.9, "titleScale": 0.78,
-      "blocks": [
-        { "type": "label", "text": "editorial" },
-        { "type": "title", "text": "Beleza é função" },
-        { "type": "rule" },
-        { "type": "columns", "text": "{{para}} {{para}}" }
-      ]
-    },
-    {
-      "id": "interface", "kind": "paper", "w": 380, "bodyScale": 0.95, "titleScale": 0.62,
-      "blocks": [
-        { "type": "eyebrow", "scale": 0.72, "text": "Interface" },
-        { "type": "title", "mt": 9, "text": "Assinatura visual" },
-        { "type": "body", "text": "{{para:108}}" },
-        { "type": "button", "scale": 0.95, "text": "continuar" }
-      ]
-    },
-    {
-      "id": "escala", "kind": "accent", "w": 470, "bodyScale": 0.86, "titleScale": 0.8,
-      "blocks": [
-        { "type": "label", "text": "escala" },
-        { "type": "stack", "children": [
-          { "type": "title", "text": "Beleza é função" },
-          { "type": "title", "scale": 0.66, "text": "Beleza é função" },
-          { "type": "title", "scale": 0.44, "text": "Beleza é função" }
-        ] },
-        { "type": "body", "mt": 12, "text": "{{para:88}}" }
-      ]
-    },
-    {
-      "id": "ficha", "kind": "ink", "w": 330, "bodyScale": 0.9, "titleScale": 0.4,
-      "blocks": [
-        { "type": "label", "text": "ficha" },
-        { "type": "meta", "entries": [
-          { "caption": "título", "value": { "role": "title", "text": "{{titleFont}}" } },
-          { "caption": "corpo", "value": { "role": "body", "scale": 1.1, "text": "{{bodyFont}}" } },
-          { "caption": "contraste", "value": { "role": "body", "scale": 1.1, "text": "{{contrast}}%" } }
-        ] }
-      ]
-    },
-    {
-      "id": "citacao", "kind": "paper", "w": 430, "bodyScale": 0.95, "titleScale": 0.7,
-      "blocks": [
-        { "type": "label", "text": "citação" },
-        { "type": "title", "text": "“Forma que<br/>conversa.”" },
-        { "type": "body", "text": "{{para:124}}" }
-      ]
-    },
-    {
-      "id": "alfabeto", "kind": "paper", "w": 490, "bodyScale": 0.92, "titleScale": 0.5,
-      "blocks": [
-        { "type": "label", "text": "alfabeto" },
-        { "type": "title", "text": "ABCDEFGHIJKLM<br/>NOPQRSTUVWXYZ" },
-        { "type": "body", "mt": 12, "text": "abcdefghijklmnopqrstuvwxyz 0123456789" }
-      ]
-    },
-    {
-      "id": "numerais", "kind": "ink", "w": 410, "bodyScale": 0.88, "titleScale": 0.92,
-      "blocks": [
-        { "type": "label", "text": "numerais" },
-        { "type": "title", "num": true, "text": "0123456789" },
-        { "type": "rows", "role": "body", "mt": 14, "items": [
-          { "left": { "text": "Corpo do texto" }, "right": { "num": true, "text": "{{sizeBody}} px" } },
-          { "left": { "text": "Título" }, "right": { "num": true, "text": "{{sizeTitle}} px" } },
-          { "left": { "text": "Contraste" }, "right": { "num": true, "text": "{{contrast}}%" } }
-        ] }
-      ]
-    },
-    {
-      "id": "convite", "kind": "accent", "w": 360, "bodyScale": 0.9, "titleScale": 0.68,
-      "blocks": [
-        { "type": "label", "text": "convite" },
-        { "type": "video", "family": "scan", "ratio": 2.6, "bleed": true, "mb": 4 },
-        { "type": "title", "mt": 18, "text": "Noite de<br/>Tipografia" },
-        { "type": "body", "mt": 12, "text": "Quinta, 20h · Rua da Consolação, 1200" },
-        { "type": "stamp", "scale": 0.72, "text": "entrada franca" }
-      ]
-    },
-    {
-      "id": "indice", "kind": "paper", "w": 440, "bodyScale": 0.95, "titleScale": 0.44,
-      "blocks": [
-        { "type": "label", "text": "índice" },
-        { "type": "rows", "items": [
-          { "left": { "role": "title", "text": "Anatomia" }, "right": { "role": "body", "num": true, "text": "012" } },
-          { "left": { "role": "title", "text": "Contraste" }, "right": { "role": "body", "num": true, "text": "034" } },
-          { "left": { "role": "title", "text": "Ritmo" }, "right": { "role": "body", "num": true, "text": "058" } },
-          { "left": { "role": "title", "text": "Hierarquia" }, "right": { "role": "body", "num": true, "text": "081" } }
-        ] }
-      ]
-    },
-    {
-      "id": "capa", "kind": "ink", "w": 340, "bodyScale": 0.88, "titleScale": 0.7,
-      "blocks": [
-        { "type": "label", "text": "capa" },
-        { "type": "title", "text": "O peso<br/>da forma" },
-        { "type": "shader", "family": "flow", "ratio": 2.4, "bleed": true, "mt": 18 },
-        { "type": "rule" },
-        { "type": "body", "text": "Ensaios sobre tipografia aplicada" },
-        { "type": "body", "scale": 0.78, "mt": 22, "tracking": 0.16, "caps": true, "text": "Edições Palco" }
-      ]
-    },
-    {
-      "id": "manchete", "kind": "paper", "w": 480, "bodyScale": 0.85, "titleScale": 0.6,
-      "blocks": [
-        { "type": "label", "text": "manchete" },
-        { "type": "eyebrow", "scale": 0.8, "text": "Caderno de Design" },
-        { "type": "title", "mt": 8, "text": "A fonte certa não se nota" },
-        { "type": "columns", "text": "{{para}}" }
-      ]
-    },
-    {
-      "id": "verbete", "kind": "paper", "w": 390, "bodyScale": 0.92, "titleScale": 0.6,
-      "blocks": [
-        { "type": "label", "text": "verbete" },
-        { "type": "title", "text": "pareamento" },
-        { "type": "body", "scale": 0.86, "mt": 6, "opacity": 0.6, "text": "pa·re·a·men·to · substantivo" },
-        { "type": "body", "text": "Ato de combinar duas formas que se sustentam sem disputar a mesma atenção." }
-      ]
-    },
-    {
-      "id": "comparativo", "kind": "accent", "w": 450, "bodyScale": 0.85, "titleScale": 0.46,
-      "blocks": [
-        { "type": "label", "text": "comparativo" },
-        { "type": "split", "cols": [
-          [
-            { "type": "body", "scale": 0.68, "mt": 0, "mb": 8, "tracking": 0.18, "caps": true, "text": "{{titleFont}}" },
-            { "type": "title", "text": "Hamburgefonstiv" }
+        {
+          "type": "shader",
+          "family": "aurora",
+          "flow": "absolute",
+          "inset": [
+            0,
+            0,
+            0,
+            0
           ],
-          [
-            { "type": "body", "scale": 0.68, "mt": 0, "mb": 8, "tracking": 0.18, "caps": true, "text": "{{bodyFont}}" },
-            { "type": "body", "scale": 1.5, "lh": 1.1, "opacity": 1, "text": "Hamburgefonstiv" }
+          "opacity": 0.6
+        },
+        {
+          "type": "label",
+          "text": "pôster"
+        },
+        {
+          "type": "title",
+          "text": "Aa"
+        },
+        {
+          "type": "title",
+          "scale": 0.26,
+          "text": "{{fox}}"
+        }
+      ]
+    },
+    {
+      "id": "editorial",
+      "kind": "paper",
+      "w": 460,
+      "bodyScale": 0.9,
+      "titleScale": 0.78,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "editorial"
+        },
+        {
+          "type": "title",
+          "text": "Beleza é função"
+        },
+        {
+          "type": "rule"
+        },
+        {
+          "type": "columns",
+          "text": "{{para}} {{para}}"
+        }
+      ]
+    },
+    {
+      "id": "interface",
+      "kind": "paper",
+      "w": 380,
+      "bodyScale": 0.95,
+      "titleScale": 0.62,
+      "blocks": [
+        {
+          "type": "eyebrow",
+          "scale": 0.72,
+          "text": "Interface"
+        },
+        {
+          "type": "title",
+          "mt": 9,
+          "text": "Assinatura visual"
+        },
+        {
+          "type": "body",
+          "text": "{{para:108}}"
+        },
+        {
+          "type": "button",
+          "scale": 0.95,
+          "text": "continuar"
+        }
+      ]
+    },
+    {
+      "id": "escala",
+      "kind": "accent",
+      "w": 470,
+      "bodyScale": 0.86,
+      "titleScale": 0.8,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "escala"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "title",
+              "text": "Beleza é função"
+            },
+            {
+              "type": "title",
+              "scale": 0.66,
+              "text": "Beleza é função"
+            },
+            {
+              "type": "title",
+              "scale": 0.44,
+              "text": "Beleza é função"
+            }
           ]
-        ] },
-        { "type": "body", "mt": 14, "text": "{{para:84}}" }
+        },
+        {
+          "type": "body",
+          "mt": 12,
+          "text": "{{para:88}}"
+        }
       ]
     },
     {
-      "id": "etiqueta", "kind": "paper", "w": 350, "bodyScale": 0.85, "titleScale": 0.6,
+      "id": "ficha",
+      "kind": "ink",
+      "w": 330,
+      "bodyScale": 0.9,
+      "titleScale": 0.4,
       "blocks": [
-        { "type": "label", "text": "etiqueta" },
-        { "type": "image", "family": "grid", "motion": "still", "ratio": 3.0, "bleed": true, "mb": 4 },
-        { "type": "title", "mt": 18, "text": "Café<br/>Torrado" },
-        { "type": "rule" },
-        { "type": "body", "text": "Origem única · Torra média · Moagem fina" },
-        { "type": "body", "num": true, "mt": 6, "text": "250 g ℮" }
+        {
+          "type": "label",
+          "text": "ficha"
+        },
+        {
+          "type": "meta",
+          "entries": [
+            {
+              "caption": "título",
+              "value": {
+                "role": "title",
+                "text": "{{titleFont}}"
+              }
+            },
+            {
+              "caption": "corpo",
+              "value": {
+                "role": "body",
+                "scale": 1.1,
+                "text": "{{bodyFont}}"
+              }
+            },
+            {
+              "caption": "contraste",
+              "value": {
+                "role": "body",
+                "scale": 1.1,
+                "text": "{{contrast}}%"
+              }
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "hero", "kind": "ink", "w": 500, "bodyScale": 0.95, "titleScale": 0.82,
+      "id": "citacao",
+      "kind": "paper",
+      "w": 430,
+      "bodyScale": 0.95,
+      "titleScale": 0.7,
       "blocks": [
-        { "type": "shader", "family": "flow", "flow": "absolute", "inset": [0, 0, 0, 0], "opacity": 0.42 },
-        { "type": "label", "text": "hero" },
-        { "type": "title", "text": "Componha<br/>com intenção" },
-        { "type": "body", "text": "{{para:96}}" },
-        { "type": "group", "gap": 10, "children": [
-          { "type": "button", "scale": 0.95, "text": "começar" },
-          { "type": "button", "scale": 0.95, "opacity": 0.55, "text": "ver exemplos" }
-        ] }
+        {
+          "type": "label",
+          "text": "citação"
+        },
+        {
+          "type": "title",
+          "text": "“Forma que<br/>conversa.”"
+        },
+        {
+          "type": "body",
+          "text": "{{para:124}}"
+        }
       ]
     },
     {
-      "id": "legenda", "kind": "paper", "w": 330, "bodyScale": 0.8, "titleScale": 0.42,
+      "id": "alfabeto",
+      "kind": "paper",
+      "w": 490,
+      "bodyScale": 0.92,
+      "titleScale": 0.5,
       "blocks": [
-        { "type": "label", "text": "legenda" },
-        { "type": "video", "family": "scan", "ratio": 2.2, "bleed": true, "mb": 4 },
-        { "type": "title", "mt": 18, "text": "Detalhe da haste" },
-        { "type": "body", "text": "{{para:150}}" },
-        { "type": "body", "scale": 0.76, "mt": 12, "tracking": 0.16, "caps": true, "opacity": 0.55, "text": "fig. 04 — {{titleFont}} / {{bodyFont}}" }
+        {
+          "type": "label",
+          "text": "alfabeto"
+        },
+        {
+          "type": "title",
+          "text": "ABCDEFGHIJKLM<br/>NOPQRSTUVWXYZ"
+        },
+        {
+          "type": "body",
+          "mt": 12,
+          "text": "abcdefghijklmnopqrstuvwxyz 0123456789"
+        }
+      ]
+    },
+    {
+      "id": "numerais",
+      "kind": "ink",
+      "w": 410,
+      "bodyScale": 0.88,
+      "titleScale": 0.92,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "numerais"
+        },
+        {
+          "type": "title",
+          "num": true,
+          "text": "0123456789"
+        },
+        {
+          "type": "rows",
+          "role": "body",
+          "mt": 14,
+          "items": [
+            {
+              "left": {
+                "text": "Corpo do texto"
+              },
+              "right": {
+                "num": true,
+                "text": "{{sizeBody}} px"
+              }
+            },
+            {
+              "left": {
+                "text": "Título"
+              },
+              "right": {
+                "num": true,
+                "text": "{{sizeTitle}} px"
+              }
+            },
+            {
+              "left": {
+                "text": "Contraste"
+              },
+              "right": {
+                "num": true,
+                "text": "{{contrast}}%"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "convite",
+      "kind": "accent",
+      "w": 360,
+      "bodyScale": 0.9,
+      "titleScale": 0.68,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "convite"
+        },
+        {
+          "type": "video",
+          "family": "silk",
+          "ratio": 2.6,
+          "bleed": true,
+          "mb": 4
+        },
+        {
+          "type": "title",
+          "mt": 18,
+          "text": "Noite de<br/>Tipografia"
+        },
+        {
+          "type": "body",
+          "mt": 12,
+          "text": "Quinta, 20h · Rua da Consolação, 1200"
+        },
+        {
+          "type": "stamp",
+          "scale": 0.72,
+          "text": "entrada franca"
+        }
+      ]
+    },
+    {
+      "id": "indice",
+      "kind": "paper",
+      "w": 440,
+      "bodyScale": 0.95,
+      "titleScale": 0.44,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "índice"
+        },
+        {
+          "type": "rows",
+          "items": [
+            {
+              "left": {
+                "role": "title",
+                "text": "Anatomia"
+              },
+              "right": {
+                "role": "body",
+                "num": true,
+                "text": "012"
+              }
+            },
+            {
+              "left": {
+                "role": "title",
+                "text": "Contraste"
+              },
+              "right": {
+                "role": "body",
+                "num": true,
+                "text": "034"
+              }
+            },
+            {
+              "left": {
+                "role": "title",
+                "text": "Ritmo"
+              },
+              "right": {
+                "role": "body",
+                "num": true,
+                "text": "058"
+              }
+            },
+            {
+              "left": {
+                "role": "title",
+                "text": "Hierarquia"
+              },
+              "right": {
+                "role": "body",
+                "num": true,
+                "text": "081"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "capa",
+      "kind": "ink",
+      "w": 340,
+      "bodyScale": 0.88,
+      "titleScale": 0.7,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "capa"
+        },
+        {
+          "type": "title",
+          "text": "O peso<br/>da forma"
+        },
+        {
+          "type": "shader",
+          "family": "drift",
+          "ratio": 2.4,
+          "bleed": true,
+          "mt": 18
+        },
+        {
+          "type": "rule"
+        },
+        {
+          "type": "body",
+          "text": "Ensaios sobre tipografia aplicada"
+        },
+        {
+          "type": "body",
+          "scale": 0.78,
+          "mt": 22,
+          "tracking": 0.16,
+          "caps": true,
+          "text": "Edições Palco"
+        }
+      ]
+    },
+    {
+      "id": "manchete",
+      "kind": "paper",
+      "w": 480,
+      "bodyScale": 0.85,
+      "titleScale": 0.6,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "manchete"
+        },
+        {
+          "type": "eyebrow",
+          "scale": 0.8,
+          "text": "Caderno de Design"
+        },
+        {
+          "type": "title",
+          "mt": 8,
+          "text": "A fonte certa não se nota"
+        },
+        {
+          "type": "columns",
+          "text": "{{para}}"
+        }
+      ]
+    },
+    {
+      "id": "verbete",
+      "kind": "paper",
+      "w": 390,
+      "bodyScale": 0.92,
+      "titleScale": 0.6,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "verbete"
+        },
+        {
+          "type": "title",
+          "text": "pareamento"
+        },
+        {
+          "type": "body",
+          "scale": 0.86,
+          "mt": 6,
+          "opacity": 0.6,
+          "text": "pa·re·a·men·to · substantivo"
+        },
+        {
+          "type": "body",
+          "text": "Ato de combinar duas formas que se sustentam sem disputar a mesma atenção."
+        }
+      ]
+    },
+    {
+      "id": "comparativo",
+      "kind": "accent",
+      "w": 450,
+      "bodyScale": 0.85,
+      "titleScale": 0.46,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "comparativo"
+        },
+        {
+          "type": "split",
+          "cols": [
+            [
+              {
+                "type": "body",
+                "scale": 0.68,
+                "mt": 0,
+                "mb": 8,
+                "tracking": 0.18,
+                "caps": true,
+                "text": "{{titleFont}}"
+              },
+              {
+                "type": "title",
+                "text": "Hamburgefonstiv"
+              }
+            ],
+            [
+              {
+                "type": "body",
+                "scale": 0.68,
+                "mt": 0,
+                "mb": 8,
+                "tracking": 0.18,
+                "caps": true,
+                "text": "{{bodyFont}}"
+              },
+              {
+                "type": "body",
+                "scale": 1.5,
+                "lh": 1.1,
+                "opacity": 1,
+                "text": "Hamburgefonstiv"
+              }
+            ]
+          ]
+        },
+        {
+          "type": "body",
+          "mt": 14,
+          "text": "{{para:84}}"
+        }
+      ]
+    },
+    {
+      "id": "etiqueta",
+      "kind": "paper",
+      "w": 350,
+      "bodyScale": 0.85,
+      "titleScale": 0.6,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "etiqueta"
+        },
+        {
+          "type": "image",
+          "family": "veil",
+          "motion": "still",
+          "ratio": 3,
+          "bleed": true,
+          "mb": 4
+        },
+        {
+          "type": "title",
+          "mt": 18,
+          "text": "Café<br/>Torrado"
+        },
+        {
+          "type": "rule"
+        },
+        {
+          "type": "body",
+          "text": "Origem única · Torra média · Moagem fina"
+        },
+        {
+          "type": "body",
+          "num": true,
+          "mt": 6,
+          "text": "250 g ℮"
+        }
+      ]
+    },
+    {
+      "id": "hero",
+      "kind": "ink",
+      "w": 500,
+      "bodyScale": 0.95,
+      "titleScale": 0.82,
+      "blocks": [
+        {
+          "type": "shader",
+          "family": "veil",
+          "flow": "absolute",
+          "inset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "opacity": 0.42
+        },
+        {
+          "type": "label",
+          "text": "hero"
+        },
+        {
+          "type": "title",
+          "text": "Componha<br/>com intenção"
+        },
+        {
+          "type": "body",
+          "text": "{{para:96}}"
+        },
+        {
+          "type": "group",
+          "gap": 10,
+          "children": [
+            {
+              "type": "button",
+              "scale": 0.95,
+              "text": "começar"
+            },
+            {
+              "type": "button",
+              "scale": 0.95,
+              "opacity": 0.55,
+              "text": "ver exemplos"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "legenda",
+      "kind": "paper",
+      "w": 330,
+      "bodyScale": 0.8,
+      "titleScale": 0.42,
+      "blocks": [
+        {
+          "type": "label",
+          "text": "legenda"
+        },
+        {
+          "type": "video",
+          "family": "aurora",
+          "ratio": 2.2,
+          "bleed": true,
+          "mb": 4
+        },
+        {
+          "type": "title",
+          "mt": 18,
+          "text": "Detalhe da haste"
+        },
+        {
+          "type": "body",
+          "text": "{{para:150}}"
+        },
+        {
+          "type": "body",
+          "scale": 0.76,
+          "mt": 12,
+          "tracking": 0.16,
+          "caps": true,
+          "opacity": 0.55,
+          "text": "fig. 04 — {{titleFont}} / {{bodyFont}}"
+        }
       ]
     }
   ]

@@ -1,5 +1,6 @@
 import type { CardKind } from "../spec";
-import { familyById, PALETTE, type Family } from "./families";
+import { familyById, type Family } from "./families";
+import { luminanceBand, PALETTES, type CardPalette } from "./legibility";
 
 /**
  * Motor de mídia dos cards.
@@ -34,7 +35,11 @@ interface Slot {
   still: boolean;
   seed: [number, number, number];
   params: number[];
-  palette: [number[], number[], number[]];
+  palette: CardPalette;
+  /** faixa de luminância permitida, vinda do contraste exigido com o texto */
+  band: [number, number];
+  /** quanto o campo pode se afastar do fundo, de 0 a 1 */
+  amount: number;
   w: number;
   h: number;
   drawn: boolean;
@@ -45,9 +50,11 @@ interface Program {
   res: WebGLUniformLocation | null;
   time: WebGLUniformLocation | null;
   seed: WebGLUniformLocation | null;
-  c0: WebGLUniformLocation | null;
-  c1: WebGLUniformLocation | null;
-  c2: WebGLUniformLocation | null;
+  bg: WebGLUniformLocation | null;
+  near: WebGLUniformLocation | null;
+  accent: WebGLUniformLocation | null;
+  band: WebGLUniformLocation | null;
+  amount: WebGLUniformLocation | null;
   p: WebGLUniformLocation | null;
 }
 
@@ -115,9 +122,11 @@ function link(gl: WebGLRenderingContext, frag: string): Program | null {
     res: gl.getUniformLocation(program, "u_res"),
     time: gl.getUniformLocation(program, "u_time"),
     seed: gl.getUniformLocation(program, "u_seed"),
-    c0: gl.getUniformLocation(program, "u_c0"),
-    c1: gl.getUniformLocation(program, "u_c1"),
-    c2: gl.getUniformLocation(program, "u_c2"),
+    bg: gl.getUniformLocation(program, "u_bg"),
+    near: gl.getUniformLocation(program, "u_near"),
+    accent: gl.getUniformLocation(program, "u_accent"),
+    band: gl.getUniformLocation(program, "u_band"),
+    amount: gl.getUniformLocation(program, "u_amount"),
     p: gl.getUniformLocation(program, "u_p"),
   };
 }
@@ -186,9 +195,11 @@ export function initMedia(): MediaEngine | null {
     gl.uniform2f(prog.res, slot.w, slot.h);
     gl.uniform1f(prog.time, slot.still ? 0 : timestamp / 1000);
     gl.uniform3f(prog.seed, slot.seed[0], slot.seed[1], slot.seed[2]);
-    gl.uniform3fv(prog.c0, slot.palette[0]);
-    gl.uniform3fv(prog.c1, slot.palette[1]);
-    gl.uniform3fv(prog.c2, slot.palette[2]);
+    gl.uniform3fv(prog.bg, slot.palette.bg as unknown as number[]);
+    gl.uniform3fv(prog.near, slot.palette.near as unknown as number[]);
+    gl.uniform3fv(prog.accent, slot.palette.accent as unknown as number[]);
+    gl.uniform2f(prog.band, slot.band[0], slot.band[1]);
+    gl.uniform1f(prog.amount, slot.amount);
     gl.uniform4f(
       prog.p,
       slot.params[0] ?? 0,
@@ -299,7 +310,11 @@ export function initMedia(): MediaEngine | null {
       next.push({
         el, canvas, ctx, family, seed, params,
         still: (el.dataset.motion ?? "loop") === "still" || reduced,
-        palette: PALETTE[kind] ?? PALETTE.paper,
+        palette: PALETTES[kind] ?? PALETTES.paper,
+        // A trava de legibilidade. Vem do contraste exigido contra a cor do
+        // texto do card, não de um valor escolhido a olho.
+        band: luminanceBand(kind),
+        amount: override.amount ?? 1,
         w, h, drawn: false,
       });
     }

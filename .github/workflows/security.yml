@@ -1,0 +1,26 @@
+name: security
+
+# Cinto de segurança independente do que roda na máquina: o mesmo diff é lido de
+# novo aqui, com contexto do repositório inteiro. Precisa do segredo
+# ANTHROPIC_API_KEY no repo; sem ele o job falha na hora, e falhar alto é melhor
+# que revisar nada calado.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A revisão compara contra a base do PR, então o histórico raso não serve.
+          fetch-depth: 0
+      - uses: anthropics/claude-code-security-review@main
+        with:
+          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          comment-pr: true

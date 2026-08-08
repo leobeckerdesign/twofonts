@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Pares tipográficos do Google Fonts, escolhidos por rede neural e aplicados em dezenas de composições." />
-  <meta name="theme-color" content="#0b0b0d" />
+  <meta name="theme-color" content="#0a0a0a" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" href="/pairs.json" as="fetch" crossorigin />
@@ -25,39 +25,54 @@
 
   <div id="stage">
     <main id="field" aria-label="Composições aplicando o par tipográfico"></main>
-    <button id="prev" class="nav nav--prev" type="button" aria-label="Par anterior deste corte">
-      <span aria-hidden="true">←</span>
-    </button>
-    <button id="next" class="nav nav--next" type="button" aria-label="Próximo par deste corte">
-      <span aria-hidden="true">→</span>
-    </button>
   </div>
+
+  <!-- Editor de amostra. Independente dos cards: divide com eles só o par de
+       fontes ativo. O corpo do painel é montado em ui/editor.ts porque os pesos
+       oferecidos dependem da família — só entra na tela a faixa que ela tem. -->
+  <aside id="editor" aria-label="Editor de amostra">
+    <div id="editor-body" class="editor__body"></div>
+    <button id="editor-handle" class="editor__handle" type="button"
+            aria-expanded="false" aria-controls="editor-body">
+      <span class="editor__grip" aria-hidden="true"></span>
+      <span class="editor__handle-label">texto</span>
+    </button>
+  </aside>
 
   <p id="hint" aria-hidden="true">role para navegar</p>
 
-  <div id="shelf-wrap">
-    <div id="shelf" role="group" aria-label="Pares disponíveis neste recorte"></div>
+  <!-- Prateleira e dock saíram do fluxo e viraram uma sobreposição só. Enquanto
+       eram irmãos do palco, cada um trazia o próprio fundo opaco e a tela virava
+       três retângulos empilhados; agora o campo ocupa a janela inteira, os cards
+       passam por baixo e quem separa os controles do campo é o degradê do #bottom. -->
+  <div id="bottom">
+    <div id="shelf-wrap">
+      <div id="shelf" role="group" aria-label="Pares disponíveis neste recorte"></div>
+    </div>
+
+    <!-- Anatomia do `PreviewSlider` do react-bits: trilho como role="slider", com
+         preenchimento, marcas e o cursor na borda do preenchimento. O input nativo
+         saiu porque o desenho pede TEXTO dentro do trilho, o que nenhum
+         ::-webkit-slider-* permite; o teclado e o ARIA vêm à mão em controls.ts. -->
+    <div id="dock" role="group" aria-label="Controles">
+      <div class="scrubber">
+        <div id="contrast" class="scrubber__track" role="slider" tabindex="0"
+             aria-label="Contraste de medida entre título e texto"
+             aria-valuemin="1" aria-valuemax="10" aria-valuenow="6">
+          <!-- Marcas ANTES do preenchimento: assim ele as cobre, e elas só
+               aparecem no vão que falta — como no original. -->
+          <div class="scrubber__ticks" aria-hidden="true"></div>
+          <div class="scrubber__fill" aria-hidden="true"></div>
+          <div class="scrubber__thumb" aria-hidden="true"></div>
+          <div id="contrast-value" class="scrubber__value num" aria-hidden="true">6/10</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div id="dock" role="group" aria-label="Controles">
-    <label class="dock__label" for="contrast">harmonia</label>
-    <div id="contrast-wrap">
-      <input id="contrast" type="range" min="0" max="9" step="1" value="5"
-             list="contrast-steps" aria-label="Contraste entre as duas fontes" />
-      <datalist id="contrast-steps">
-        <option value="0"></option><option value="1"></option><option value="2"></option>
-        <option value="3"></option><option value="4"></option><option value="5"></option>
-        <option value="6"></option><option value="7"></option><option value="8"></option>
-        <option value="9"></option>
-      </datalist>
-      <div id="contrast-ticks" aria-hidden="true"></div>
-    </div>
-    <span class="dock__label" aria-hidden="true">contraste</span>
-    <button id="generate" type="button" title="Sorteia corte e par (tecla espaço)">
-      sortear <kbd>espaço</kbd>
-    </button>
-    <button id="share" type="button">copiar link</button>
-  </div>
+  <!-- Troca de par. Fica calado para o leitor de tela: quem anuncia a mudança é
+       o #pair-meta, que é `aria-live` e diz os nomes das duas fontes. -->
+  <div id="busy" aria-hidden="true"><span class="busy__ring"></span></div>
 
   <div id="loading" role="status" aria-live="polite">escolhendo o primeiro par…</div>
 

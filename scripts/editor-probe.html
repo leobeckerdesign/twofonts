@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><title>sonda do editor</title></head>
+<body>
+<pre id="out" style="position:relative;z-index:1;background:#fff">rodando</pre>
+<script type="module">
+/**
+ * Sonda do editor lateral: ele abre, e o que faz dentro dele fica dentro dele.
+ *
+ * O painel entrou num app que já escutava teclado e roda na JANELA INTEIRA —
+ * era assim que rolar em qualquer lugar movia o campo e as setas trocavam o par
+ * de qualquer lugar. Cada controle novo do editor é uma chance de disparar os
+ * dois por acidente: a régua de medida anda de seta, o botão de peso aciona com
+ * Espaço, e o painel rola sozinho quando o conteúdo passa da altura.
+ *
+ * Nenhum desses defeitos aparece em teste unitário: todos dependem de eventos
+ * reais subindo por um DOM real até `window`.
+ */
+const out = document.getElementById("out");
+const L = [];
+const say = (s) => { L.push(s); out.textContent = L.join("\n"); };
+let falhas = 0;
+const check = (nome, real, esperado) => {
+  const ok = String(real) === String(esperado);
+  if (!ok) falhas++;
+  say(`${ok ? "  ok  " : "FALHA "} ${nome.padEnd(46)} ${ok ? real : `${real} != ${esperado}`}`);
+};
+
+try {
+  const f = document.createElement("iframe");
+  // DENTRO da viewport: fora dela o Chrome não renderiza o frame, e sem render
+  // não há `requestAnimationFrame` — o campo ficaria inerte e a sonda mediria
+  // um app pela metade. O `<pre>` do resultado fica por cima.
+  f.style.cssText = "width:1440px;height:820px;border:0;position:fixed;left:0;top:0;z-index:0";
+  f.src = "/";
+  document.body.appendChild(f);
+  await new Promise((r) => { f.onload = r; });
+
+  const d = f.contentDocument;
+  const w = f.contentWindow;
+  await d.fonts.ready;
+  for (let i = 0; i < 120 && !d.querySelector(".chip"); i++) await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 1200));
+
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  const painel = d.getElementById("editor");
+  const alca = d.getElementById("editor-handle");
+  const visivel = () => Math.round(painel.getBoundingClientRect().right);
+  const par = () => `${d.getElementById("name-a").textContent}+${d.getElementById("name-b").textContent}`;
+  const rolagem = () => d.querySelector(".slot")?.style.transform ?? "";
+
+  /* ---------- recolhido por padrão ---------- */
+  check("nasce recolhido", alca.getAttribute("aria-expanded"), "false");
+  // Só a lombada aparece; o corpo fica fora da tela, à esquerda.
+  check("recolhido mostra so a lombada", visivel(), 48);
+  check("dois campos de texto", d.querySelectorAll("#editor [contenteditable]").length, 2);
+  check("os dois vem preenchidos",
+    [...d.querySelectorAll("#editor [contenteditable]")].every((e) => e.textContent.trim().length > 10), true);
+  // Recolhido o corpo continua no DOM, só que fora da tela: sem `inert`, um
+  // `Tab` levaria o foco para um campo invisível e o teclado escreveria no
+  // escuro.
+  const primeiroCampo = d.querySelector("#editor [contenteditable]");
+  primeiroCampo.focus();
+  check("recolhido nao aceita foco", d.activeElement === primeiroCampo, false);
+
+  /* ---------- abre em um terco ---------- */
+  alca.click();
+  await espera(700);
+  const terco = Math.round(w.innerWidth / 3);
+  check("abre", alca.getAttribute("aria-expanded"), "true");
+  // clamp(320px, 33.33vw, 560px): em 1440 o terço vence os dois limites.
+  check("abre em ~1/3 da tela", Math.abs(visivel() - terco) <= 8, true);
+
+  // O cartão é modal: não encosta no topo nem na barra de baixo, e a barra
+  // continua inteira. Antes ele ia de borda a borda e EMPURRAVA a barra.
+  const barra = d.getElementById("bottom").getBoundingClientRect();
+  const cartao = painel.getBoundingClientRect();
+  check("o cartao nao encosta no topo", cartao.top > 0, true);
+  check("o cartao termina acima da barra", Math.round(cartao.bottom) <= Math.round(barra.top), true);
+  check("a barra continua de ponta a ponta",
+    Math.round(d.getElementById("shelf-wrap").getBoundingClientRect().left), 0);
+
+  /* ---------- a fonte do par entra nos dois campos ---------- */
+  const campos = [...d.querySelectorAll("#editor [contenteditable]")];
+  // O estado de abertura, para o "restaurar" ser cobrado contra ELE — e não
+  // contra um número escrito aqui, que envelhece a cada ajuste de desenho.
+  const medidaInicial = getComputedStyle(campos[0]).fontSize;
+  const familias = campos.map((e) => getComputedStyle(e).fontFamily);
+  check("titulo e paragrafo em familias diferentes", familias[0] !== familias[1], true);
+  // A primeira da pilha tem que ser uma das duas do par, não a de reserva. As
+  // aspas saem da comparação porque o Chrome só as devolve em nome com espaço.
+  const nomes = [d.getElementById("name-a").textContent, d.getElementById("name-b").textContent];
+  const primeira = (v) => v.split(",")[0].trim().replace(/^["']|["']$/g, "");
+  check("as duas familias sao as do par", familias.every((v) => nomes.includes(primeira(v))), true);
+
+  /* ---------- o teclado do painel nao vaza para o app ---------- */
+  const tecla = (el, init) => el.dispatchEvent(new w.KeyboardEvent("keydown", { bubbles: true, ...init }));
+
+  const antesTexto = par();
+  campos[0].focus();
+  tecla(campos[0], { key: "ArrowLeft" });
+  tecla(campos[0], { key: "ArrowRight" });
+  await espera(500);
+  check("seta dentro do texto nao troca o par", par(), antesTexto);
+
+  const regua = d.querySelector("#editor input[type=range]");
+  const antesRegua = par();
+  regua.focus();
+  tecla(regua, { key: "ArrowLeft" });
+  tecla(regua, { key: "ArrowRight" });
+  await espera(500);
+  check("seta na regua nao troca o par", par(), antesRegua);
+
+  const botao = d.querySelector("#editor .ed__trigger");
+  const antesEspaco = par();
+  botao.focus();
+  tecla(botao, { key: " ", code: "Space" });
+  await espera(500);
+  check("espaco no botao do painel nao sorteia", par(), antesEspaco);
+
+  /* ---------- a roda do painel nao rola o campo ---------- */
+  const antesRolagem = rolagem();
+  const corpo = d.getElementById("editor-body");
+  for (let i = 0; i < 6; i++) {
+    corpo.dispatchEvent(new w.WheelEvent("wheel", { bubbles: true, deltaY: 240 }));
+    await espera(30);
+  }
+  await espera(600);
+  check("roda sobre o painel nao rola o campo", rolagem(), antesRolagem);
+
+  // E o contrário continua valendo: fora do painel a roda tem que funcionar,
+  // senão a checagem de cima passaria por ter quebrado a rolagem inteira.
+  //
+  // O disparo é NO CAMPO, e não em `window`: o observador do GSAP resolve
+  // `target: window` para o `documentElement` (o `toArray` dele devolve vazio
+  // para a janela), então evento disparado direto na janela não chega a
+  // ninguém — e esta verificação passaria a acusar defeito que não existe.
+  for (let i = 0; i < 6; i++) {
+    d.getElementById("field").dispatchEvent(new w.WheelEvent("wheel", { bubbles: true, deltaY: 240 }));
+    await espera(30);
+  }
+  await espera(600);
+  check("roda fora do painel ainda rola o campo", rolagem() !== antesRolagem, true);
+
+  /* ---------- os controles mexem na amostra, e so nela ---------- */
+  const antesCard = d.querySelector(".card .t")?.getAttribute("style") ?? "";
+  const medida = d.querySelector('#editor .ed[data-slot="title"] input[data-range="size"]');
+  medida.value = String(Number(medida.max));
+  medida.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await espera(300);
+  check("medida chega no campo de texto",
+    Math.round(Number.parseFloat(getComputedStyle(campos[0]).fontSize)), Number(medida.max));
+  check("o card do palco nao se mexeu", d.querySelector(".card .t")?.getAttribute("style") ?? "", antesCard);
+
+  /* ---------- a lista suspensa é nossa, não do sistema ---------- */
+  const caixaBox = d.querySelector('#editor .ed[data-slot="title"] [data-pick="caps"]');
+  const caixaTrigger = caixaBox.querySelector(".ed__trigger");
+  const caixaLista = caixaBox.querySelector(".ed__list");
+  check("nao sobrou nenhum select nativo", d.querySelectorAll("#editor select").length, 0);
+  check("a lista nasce fechada", caixaLista.hidden, true);
+
+  caixaTrigger.click();
+  await espera(250);
+  check("o gatilho abre a lista", caixaLista.hidden, false);
+  check("e diz que abriu", caixaTrigger.getAttribute("aria-expanded"), "true");
+  check("o foco cai na opcao escolhida",
+    d.activeElement?.getAttribute("aria-selected"), "true");
+
+  // Esc fecha a LISTA e para aí: se subisse, recolheria o painel inteiro.
+  tecla(d.activeElement, { key: "Escape" });
+  await espera(250);
+  check("Esc fecha so a lista", caixaLista.hidden, true);
+  check("e o painel continua aberto", alca.getAttribute("aria-expanded"), "true");
+
+  caixaTrigger.click();
+  await espera(250);
+  caixaLista.querySelector('[data-value="upper"]').click();
+  await espera(250);
+  check("caixa alta chega no campo", getComputedStyle(campos[0]).textTransform, "uppercase");
+  check("escolher fecha a lista", caixaLista.hidden, true);
+
+  // O peso é o único controle que depende de rede: sem o pedido da face, o
+  // navegador engorda o contorno sozinho e a amostra deixa de ser a fonte. O par
+  // é sorteado a cada carga, então a sonda procura um peso alternativo em vez de
+  // supor que existe — e diz quando não havia o que testar.
+  const pesoBox = [...d.querySelectorAll('#editor [data-pick="weight"]')]
+    .find((b) => b.querySelectorAll("[data-value]").length > 1);
+  if (pesoBox) {
+    const campo = pesoBox.closest(".ed").querySelector("[contenteditable]");
+    const antes = getComputedStyle(campo).fontWeight;
+    const outro = [...pesoBox.querySelectorAll("[data-value]")].find((o) => !o.classList.contains("is-on"));
+    pesoBox.querySelector(".ed__trigger").click();
+    await espera(200);
+    outro.click();
+    await espera(400);
+    check("peso troca o corte do campo", getComputedStyle(campo).fontWeight !== antes, true);
+    check("e o gatilho passa a mostrar a escolha",
+      pesoBox.querySelector("[data-pickval]").textContent.trim(), outro.textContent.trim());
+  } else {
+    say("  --   par sem peso alternativo — nada a testar neste sorteio");
+  }
+
+  /* ---------- restaurar desfaz TUDO, não só o texto ---------- */
+  campos[0].textContent = "xxx";
+  campos[0].dispatchEvent(new w.Event("input", { bubbles: true }));
+  d.querySelector("#editor [data-reset]").click();
+  await espera(300);
+  check("restaurar devolve o texto", campos[0].textContent.length > 10, true);
+  check("restaurar devolve a medida", getComputedStyle(campos[0]).fontSize, medidaInicial);
+  check("restaurar devolve a caixa", getComputedStyle(campos[0]).textTransform, "none");
+
+  /* ---------- recolhe ---------- */
+  tecla(painel, { key: "Escape" });
+  await espera(700);
+  check("Esc recolhe", visivel(), 48);
+  check("Esc devolve o foco a alca", d.activeElement?.id, "editor-handle");
+
+  say(`TOTAL ${falhas}`);
+} catch (err) {
+  say(`ERRO: ${err && err.stack ? err.stack : String(err)}`);
+  say("TOTAL 99");
+}
+</script>
+</body>
+</html>

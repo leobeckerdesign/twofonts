@@ -82,6 +82,17 @@ export interface Block extends TextStyle {
 
   // caixas de mídia
   /**
+   * Asset real, exportado do Figma. Quando existe, ele MANDA: a caixa sai como
+   * imagem e o motor de shader nem a enxerga, porque só registra caixa que tem
+   * `<canvas>` dentro. `family` continua valendo para caixa sem `src`.
+   *
+   * Isso inverte a decisão original de "placeholder gerado, nada de asset". O
+   * Leo pediu os cards exatamente como estão no Figma, e no Figma há foto.
+   */
+  src?: string;
+  /** `background-position`, para reproduzir o recorte que o Figma guarda em matriz */
+  pos?: string;
+  /**
    * Contrato completo desde já, mesmo com o motor de shader chegando depois.
    * O objetivo é a fase do motor escrever GL sem renegociar formato de dado.
    */

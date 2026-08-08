@@ -6,6 +6,7 @@ import { fontByFamily, loadPairs, pairsIn, pickPair, weightRoles } from "./pairs
 import { assignRoles } from "./roles";
 import type { AppState, FontMeta, PairsData } from "./types";
 import { CONTRAST_STEPS, Controls, stepToContrast } from "./ui/controls";
+import { Editor } from "./ui/editor";
 import { Shelf } from "./ui/shelf";
 import { decodeState, encodeState } from "./url-state";
 
@@ -45,9 +46,12 @@ async function boot(): Promise<void> {
 
   let state: AppState = stateFromUrl(data) ?? { ...first, contrast: url.contrast };
 
-  const field = new Field(fieldRoot);
+  // O `ignore` do campo é o painel: o observador do GSAP escuta a roda na
+  // JANELA, então rolar dentro do editor rolaria o campo atrás dele.
+  const field = new Field(fieldRoot, "#editor");
   const controls = new Controls();
   const shelf = new Shelf(document.getElementById("shelf")!);
+  const editor = new Editor(weightRoles(data, state.contrast));
 
   // Lista de pares do corte ativo e onde estamos nela: as setas caminham por
   // aqui, e é a mesma lista que a prateleira exibe.
@@ -79,6 +83,17 @@ async function boot(): Promise<void> {
     return Promise.all(jobs);
   };
 
+  // O indicador só apaga quando as DUAS frentes chegam: o campo com o par novo
+  // na tela, e a prateleira com os previews do primeiro lote assentados.
+  // Apagando só com o campo, os chips continuavam trocando de fonte à vista.
+  let faltaCampo = false;
+  let faltaPrateleira = false;
+  let prateleiraToken = 0;
+  const talvezPronto = (): void => {
+    if (!faltaCampo && !faltaPrateleira) controls.busy(false);
+  };
+  field.onSettled = () => { faltaCampo = false; talvezPronto(); };
+
   const apply = (animate: boolean): void => {
     const a = fontByFamily(data, state.a);
     const b = fontByFamily(data, state.b);
@@ -86,10 +101,22 @@ async function boot(): Promise<void> {
 
     const roles = weightRoles(data, state.contrast);
     const pair = { a, b, roles, contrast: state.contrast };
+    // Toda TROCA de conjunto acende o indicador, não só a do slider: seta,
+    // chip, sorteio e corte passam todos por aqui. Quem apaga é `talvezPronto`,
+    // quando campo e prateleira terminam.
+    //
+    // `animate` é o que separa troca de primeira pintura. No boot quem cobre a
+    // tela é o `#loading`, e acender aqui deixava o indicador vazando por baixo
+    // dele — a tela de carregamento sumia e o anel continuava girando sozinho.
+    if (animate) controls.busy(true);
+    faltaCampo = true;
     if (animate) field.swap(pair);
     else field.setPair(pair);
 
     controls.sync(state.a, state.b, state.contrast);
+    // O editor divide com os cards só isto: o par e os pesos do corte. O texto
+    // digitado é dele, e sobrevive à troca.
+    editor.setPair(a, b, roles);
 
     // O sortear escolhe entre centenas de pares: se o atual não pertencer à
     // lista da faixa, entra na frente para o destaque ter o que destacar.
@@ -108,7 +135,14 @@ async function boot(): Promise<void> {
       index = 0;
       current = list;
       cursor = 0;
-      shelf.render(current, { a: state.a, b: state.b }, roles);
+      faltaPrateleira = true;
+      const token = ++prateleiraToken;
+      void shelf.render(current, { a: state.a, b: state.b }, roles).then(() => {
+        // Um recorte mais novo pode ter assumido no meio; quem manda é o último.
+        if (token !== prateleiraToken) return;
+        faltaPrateleira = false;
+        talvezPronto();
+      });
       renderedContrast = state.contrast;
     } else {
       // Andar de seta não muda a lista: só o destaque se move.
@@ -129,12 +163,19 @@ async function boot(): Promise<void> {
     apply(true);
   };
 
-  document.getElementById("prev")!.addEventListener("click", () => move(-1));
-  document.getElementById("next")!.addEventListener("click", () => move(1));
-
   addEventListener("keydown", (ev) => {
     const target = ev.target as HTMLElement | null;
-    if (target?.isContentEditable || target instanceof HTMLInputElement) return;
+    // Quem tem o foco manda nas setas. A exclusão era `instanceof
+    // HTMLInputElement`, o que funcionava enquanto o slider era um `<input>`;
+    // ele virou um `div[role=slider]` e passou a receber as setas DUAS vezes —
+    // andava um corte e navegava o par, e o `sync` da navegação devolvia o
+    // corte para onde estava. Por isso a checagem agora é por papel.
+    //
+    // `input` voltou à lista com o editor lateral: as réguas de medida e
+    // entrelinha andam de seta, e sem isto cada passo do trilho trocava o par
+    // debaixo da amostra que a pessoa estava justamente ajustando.
+    if (target?.isContentEditable === true) return;
+    if (target?.closest?.("input, [role=slider]")) return;
     if (ev.key === "ArrowLeft") { ev.preventDefault(); move(-1); }
     if (ev.key === "ArrowRight") { ev.preventDefault(); move(1); }
   });
@@ -157,11 +198,6 @@ async function boot(): Promise<void> {
       const next = pickPair(data, contrast, { a: state.a, b: state.b });
       if (next) state = { ...state, ...next };
       apply(true);
-    },
-    onCopyLink: () => {
-      navigator.clipboard?.writeText(location.href)
-        .then(() => controls.flash("copiado"))
-        .catch(() => controls.flash("falhou"));
     },
   });
 

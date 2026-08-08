@@ -17,7 +17,8 @@ export interface RenderContext extends Assignment {
 }
 
 const FOX = "The quick brown fox who jumped over a lazy dog.";
-const PARA =
+/** Exportado porque o editor lateral abre com o MESMO parágrafo dos cards. */
+export const PARA =
   "Uma tem a voz, a outra tem o argumento. O pareamento funciona quando as duas compartilham esqueleto e discordam no gesto — proporção parecida, temperamento oposto.";
 
 /** Nomes de família vêm do catálogo do Google e acabam em innerHTML. */
@@ -68,6 +69,18 @@ function inline(s: TextStyle, size: number | null): string {
 
 const attr = (name: string, value: string): string => (value === "" ? "" : ` ${name}="${value}"`);
 
+/**
+ * URL para dentro de `url('…')` num atributo `style`.
+ *
+ * O atributo já é delimitado por aspas DUPLAS, então aspas duplas aqui fechariam
+ * o `style` no meio do caminho e o resto do valor viraria atributo solto — o
+ * fundo some sem um erro sequer. Daí aspas simples no CSS, e as três coisas que
+ * ainda poderiam escapar da função (aspa simples e os parênteses do `url`) vão
+ * percent-encodadas. `esc` cuida do que é HTML.
+ */
+const cssUrl = (src: string): string =>
+  esc(src).replace(/'/g, "%27").replace(/\(/g, "%28").replace(/\)/g, "%29");
+
 const classOf = (base: string, mod: string | null, num?: boolean): string =>
   `${base}${mod === null ? "" : ` ${mod}`}${num === true ? " num" : ""}`;
 
@@ -106,6 +119,15 @@ function box(b: Block, c: RenderContext): string {
   if (b.mb !== undefined) style.push(`margin-bottom:${b.mb}px`);
   if (b.blend !== undefined) style.push(`mix-blend-mode:${b.blend}`);
   if (b.opacity !== undefined) style.push(`opacity:${b.opacity}`);
+
+  // Asset real: a caixa vira imagem e sai SEM canvas, que é exatamente como o
+  // motor de shader sabe que não é com ele — `scan` pula toda `.box` sem canvas.
+  if (b.src !== undefined) {
+    cls.push("box--asset");
+    style.push(`background-image:url('${cssUrl(b.src)}')`);
+    if (b.pos !== undefined) style.push(`background-position:${esc(b.pos)}`);
+    return `<div class="${cls.join(" ")}"${attr("style", style.join(";"))}></div>`;
+  }
 
   const data = [
     attr("data-family", b.family ?? "flow"),

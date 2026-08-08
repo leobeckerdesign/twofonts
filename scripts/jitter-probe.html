@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><title>sonda de tremor</title></head>
+<body>
+<pre id="out" style="position:relative;z-index:1;background:#fff">rodando</pre>
+<script type="module">
+/**
+ * Sonda de tremor: a barra de baixo pode mudar de tamanho quando o corte muda?
+ *
+ * Existe porque `line-height: normal` sai das MÉTRICAS da fonte, e o app troca
+ * de fonte o tempo todo — pior, `enforceFontBudget` remove <link> do documento
+ * ao despejar famílias do cache, e isso faz o navegador re-resolver as fontes
+ * do documento inteiro. Qualquer texto de UI sem entrelinha explícita passa a
+ * oscilar 1px, a prateleira empurra o dock, o dock empurra o palco, e o campo
+ * inteiro treme a cada movimento do slider.
+ *
+ * Nenhum teste unitário vê isso: depende de layout real com fonte real.
+ */
+const out = document.getElementById("out");
+const L = [];
+const say = (s) => { L.push(s); out.textContent = L.join("\n"); };
+
+try {
+  const f = document.createElement("iframe");
+  // DENTRO da viewport de proposito. Fora dela o Chrome nao renderiza o
+  // frame, e sem render nao ha `requestAnimationFrame` — todo efeito por
+  // frame (o dock, as timelines do GSAP) ficaria inerte e a sonda mediria
+  // um app pela metade. O `<pre>` do resultado fica por cima.
+  f.style.cssText = "width:1440px;height:820px;border:0;position:fixed;left:0;top:0;z-index:0";
+  f.src = "/";
+  document.body.appendChild(f);
+  await new Promise((r) => { f.onload = r; });
+
+  const d = f.contentDocument;
+  const w = f.contentWindow;
+  await d.fonts.ready;
+  for (let i = 0; i < 120 && !d.querySelector(".chip"); i++) await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 1500));
+
+  // O trilho é um `div` com role="slider", não um `<input>`: dirigir por evento
+  // `input` não faria nada. O teclado é o caminho real do usuário e exercita o
+  // mesmo `commit` que o arrasto.
+  const track = d.getElementById("contrast");
+  const tecla = (key) => track.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
+  const move = (passo) => {
+    tecla("Home");
+    for (let i = 0; i < passo; i++) tecla("ArrowRight");
+  };
+
+  /**
+   * O RETÂNGULO INTEIRO de cada alvo, não só a altura.
+   *
+   * A primeira versão desta sonda media só altura e deu tudo verde enquanto o
+   * dock tremia na cara do Leo: lá o defeito é de LARGURA, e num flex
+   * centralizado 4px num rótulo empurram o slider e os botões para o lado sem
+   * mexer um pixel na altura.
+   */
+  const alvos = () => {
+    const dock = d.getElementById("dock");
+    return [
+      ["shelf-wrap", d.getElementById("shelf-wrap")],
+      ["shelf", d.getElementById("shelf")],
+      ["stage", d.getElementById("stage")],
+      ["dock", dock],
+      // A prateleira se reconstrói, então o chip é resolvido a cada amostra.
+      ["chip", d.querySelector(".chip:not(.chip--more)")],
+      // O índice entra na chave SEMPRE: os dois rótulos dividem a classe, e sem
+      // ele caíam no mesmo balde — dois x diferentes viravam "instável", com a
+      // sonda gritando por um defeito que não existia.
+      ...[...(dock?.children ?? [])].map((c, i) => [`dock>${i}:${c.id || c.className}`, c]),
+    ];
+  };
+
+  // O chip é medido só pelo TAMANHO. A posição dele muda de propósito: a
+  // prateleira rola até o par ativo a cada corte. O que não pode mudar é a
+  // caixa — era o crescimento dela que empurrava a barra inteira.
+  const soTamanho = new Set(["chip"]);
+
+  const vistos = new Map();
+  const amostra = () => {
+    for (const [nome, el] of alvos()) {
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      const tamanho = `w=${r.width.toFixed(1)} h=${r.height.toFixed(1)}`;
+      const chave = soTamanho.has(nome)
+        ? tamanho
+        : `x=${r.x.toFixed(1)} y=${r.y.toFixed(1)} ${tamanho}`;
+      if (!vistos.has(nome)) vistos.set(nome, new Set());
+      vistos.get(nome).add(chave);
+    }
+  };
+
+  // Percorre os dez cortes, amostrando durante e depois de cada troca.
+  for (const passo of [2, 6, 1, 9, 4, 7, 0, 5, 8, 3]) {
+    move(passo);
+    for (let i = 0; i < 30; i++) { amostra(); await new Promise((r) => setTimeout(r, 40)); }
+  }
+
+  let instaveis = 0;
+  for (const [nome, set] of vistos) {
+    if (set.size === 1) { say(`  ok  ${nome.padEnd(22)} ${[...set][0]}`); continue; }
+    instaveis++;
+    say(`TREME ${nome} — ${set.size} estados`);
+    for (const v of [...set].slice(0, 4)) say(`         ${v}`);
+  }
+
+  // A última linha é o que o script de fora lê para decidir o código de saída.
+  say(`TOTAL ${instaveis}`);
+} catch (err) {
+  say(`ERRO: ${err && err.stack ? err.stack : String(err)}`);
+  say("TOTAL 99");
+}
+</script>
+</body>
+</html>

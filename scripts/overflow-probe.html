@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><title>sonda de transbordo</title></head>
+<body>
+<pre id="out" style="position:relative;z-index:1;background:#fff">rodando</pre>
+<script type="module">
+/**
+ * Sonda de transbordo: carrega o campo num iframe e mede se algum texto passa
+ * da caixa do pai.
+ *
+ * Existe porque nem teste unitário nem jsdom enxergam isto: só o navegador de
+ * verdade sabe quantos pixels a palavra ocupa naquela fonte naquele corpo. O
+ * bug que a motivou passou por 82 testes verdes.
+ *
+ * Os pares são os mais LARGOS do catálogo no contraste máximo — o canto onde o
+ * título estoura. O par congelado do Figma entra no fim, como controle.
+ */
+const CASES = [
+  ["Bungee", "Ultra", 1],
+  ["Alfa Slab One", "Rubik Mono One", 1],
+  ["Anton", "Archivo Black", 1],
+  ["Bevan", "Bungee", 1],
+  ["Ultra", "Alfa Slab One", 1],
+  ["Passion One", "Anton", 1],
+  ["Bungee", "Bungee", 1],
+  ["Ultra", "Ultra", 1],
+  ["Rubik Mono One", "Bevan", 0.95],
+  ["Alfa Slab One", "Alfa Slab One", 0.9],
+  ["Titan One", "Passion One", 0.8],
+  ["Archivo Black", "Titan One", 0.7],
+  ["Bitter", "Barlow", 1],
+  ["Bitter", "Barlow", 0.556],
+  ["Bitter", "Barlow", 0],
+];
+
+const out = document.getElementById("out");
+const lines = [];
+let total = 0;
+
+for (const [a, b, c] of CASES) {
+  const f = document.createElement("iframe");
+  // DENTRO da viewport de proposito. Fora dela o Chrome nao renderiza o
+  // frame, e sem render nao ha `requestAnimationFrame` — todo efeito por
+  // frame (o dock, as timelines do GSAP) ficaria inerte e a sonda mediria
+  // um app pela metade. O `<pre>` do resultado fica por cima.
+  f.style.cssText = "width:1440px;height:820px;border:0;position:fixed;left:0;top:0;z-index:0";
+  f.src = `/?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}&c=${c}`;
+  document.body.appendChild(f);
+  await new Promise((r) => { f.onload = r; });
+
+  const d = f.contentDocument;
+  const win = f.contentWindow;
+  await d.fonts.ready;
+  // O esqueleto só sai depois do reajuste; esperar por ele é esperar o ajuste.
+  for (let i = 0; i < 200 && (d.querySelector(".card.is-loading") || !d.querySelector(".card")); i++) {
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  await new Promise((r) => setTimeout(r, 500));
+
+  let measured = 0;
+  let worst = 0;
+  const bad = [];
+  for (const card of d.querySelectorAll(".card")) {
+    for (const n of card.querySelectorAll(".t, .p")) {
+      const p = n.parentElement;
+      if (!p || p.offsetWidth === 0 || n.offsetWidth === 0) continue;
+      const cs = win.getComputedStyle(p);
+      const max = p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      if (max <= 0) continue;
+
+      // Range, e não `scrollWidth`: num bloco com overflow visível o
+      // scrollWidth gruda na largura do conteúdo e esconde justamente o
+      // transbordo que procuramos. Foi esse detalhe que manteve o `fitText`
+      // como código morto sem ninguém notar.
+      const range = d.createRange();
+      range.selectNodeContents(n);
+      const rects = [...range.getClientRects()];
+      if (rects.length === 0) continue;
+      // `getClientRects` já vem com o `scale` do campo; o limite, não.
+      const zoom = n.getBoundingClientRect().width / n.offsetWidth;
+      if (!(zoom > 0)) continue;
+      const widest = Math.max(...rects.map((r) => r.width)) / zoom;
+
+      measured++;
+      const over = widest - max;
+      if (over > 1) {
+        worst = Math.max(worst, over);
+        bad.push(`${card.dataset.card}/${(n.className || "?").replace(/\s+/g, ".")}+${over.toFixed(0)}px`);
+      }
+    }
+  }
+
+  total += bad.length;
+  lines.push(
+    `${(`${a} + ${b}`).padEnd(32)} c=${String(c).padEnd(6)} medidos=${String(measured).padEnd(4)} ` +
+    `estouros=${bad.length} pior=+${worst.toFixed(0)}px  ${bad.slice(0, 6).join(" ")}`,
+  );
+  out.textContent = lines.join("\n");
+  f.remove();
+}
+
+// A última linha é o que o script de fora lê para decidir o código de saída.
+out.textContent = `${lines.join("\n")}\nTOTAL ${total}`;
+</script>
+</body>
+</html>

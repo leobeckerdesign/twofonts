@@ -5,20 +5,43 @@
   font-display: swap;
 }
 
+/* Preto, branco e cinza. O laranja saiu: a hierarquia agora é só luminância,
+   e quem está em foco é quem está mais claro. */
 :root {
-  --bg: #0b0b0d;
-  --paper: #e9e5dd;
-  --ink: #131310;
-  --muted: #8a877f;
-  --line: rgba(233, 229, 221, .13);
-  --accent: #f05524;
+  /* A lista suspensa do `select` é desenhada pelo SISTEMA, fora do alcance do
+     CSS. Sem isto ela abre branca no meio de um app inteiro preto. */
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --paper: #ffffff;
+  --ink: #000000;
+  --muted: #8a8a8a;
+  --line: rgba(255, 255, 255, .14);
+  /* A escada de superfície. Substituiu o `--accent` que herdou o lugar do
+     laranja: sem cor, quem diz o estado é o TOM do preenchimento, e um token
+     de realce só disputava com a luminância. */
+  --surface: #141414;
+  --surface-hover: #1f1f1f;
+  --surface-active: #2c2c2c;
+  /* Um degrau ABAIXO do repouso, para o que é vazio (o "carregar mais"). */
+  --surface-sunken: #0f0f0f;
+  /* Editor lateral: a lombada sempre visível e a largura de quando ele abre.
+     Um terço da tela, com piso para caber e teto para não virar deserto. */
+  --rail: 48px;
+  --editor-w: clamp(320px, 33.33vw, 560px);
+  /* Entrada macia, saída curta. A curva de abertura desacelera longe do fim; a
+     de fechamento não precisa de cerimônia — o painel só sai da frente. */
+  --ease-in: cubic-bezier(.22, 1, .36, 1);
+  --ease-out: cubic-bezier(.4, 0, .2, 1);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; overflow: hidden; }
 
 body {
-  background: var(--bg);
+  /* O mesmo degradê que o shader desenha, para o quadro anterior ao primeiro
+     frame do WebGL já ser o fundo certo — e para ele continuar certo se o
+     contexto se perder. */
+  background: linear-gradient(to bottom, #2d2d2d 0%, #4c4c4c 32%, #747474 62%, #afafaf 100%);
   color: var(--paper);
   font-family: "Plex Mono UI", ui-monospace, "SFMono-Regular", monospace;
   display: flex;
@@ -36,7 +59,7 @@ body {
   font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
 }
 #brand { color: var(--paper); letter-spacing: .24em; }
-#brand span { color: var(--accent); }
+#brand span { color: var(--muted); }
 #pair-meta { display: flex; gap: 10px; max-width: 62vw; }
 #pair-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #name-a, #name-b { color: var(--paper); }
@@ -44,24 +67,9 @@ body {
 /* ---------- campo ----------
    Três camadas, cada uma dona de UMA transform: .slot = scroll,
    .par = ponteiro + proximidade, .zoom = escala base, .card = flutuação. */
-/* O campo limpa o próprio conteúdo ao repintar, então os botões de navegação
-   vivem no palco, como irmãos, e não dentro dele. */
 #stage { position: relative; z-index: 1; flex: 1; min-height: 0; }
 #field { position: absolute; inset: 0; overflow: hidden; }
 
-.nav {
-  position: absolute; top: 50%; z-index: 12;
-  display: grid; place-items: center;
-  width: 46px; height: 46px; transform: translateY(-50%);
-  background: rgba(11, 11, 13, .55); backdrop-filter: blur(6px);
-  border: 1px solid var(--line); color: var(--muted);
-  font-size: 17px; cursor: pointer;
-  transition: color .2s, border-color .2s, background .2s;
-}
-.nav:hover, .nav:focus-visible { color: var(--paper); border-color: var(--paper); background: rgba(11, 11, 13, .8); }
-.nav--prev { left: 16px; }
-.nav--next { right: 16px; }
-.nav[disabled] { opacity: .3; pointer-events: none; }
 .slot { position: absolute; top: 0; left: 0; will-change: transform; }
 .par { will-change: transform; }
 .zoom { transform-origin: top left; }
@@ -78,7 +86,9 @@ body {
 /* O texto sobe acima de um shader de fundo sem precisar de z-index nele. */
 .card > *:not(.box--abs) { position: relative; z-index: 1; }
 .card--ink { background: var(--ink); color: var(--paper); }
-.card--accent { background: var(--accent); color: #14120f; }
+/* O terceiro tom deixou de ser laranja e virou o cinza que o Figma desenhou:
+   um radial com o miolo mais fechado que a borda. */
+.card--accent { background: radial-gradient(circle at 50% 50%, #ababab, #e7e7e7); color: var(--ink); }
 
 .tag {
   font-family: "Plex Mono UI", monospace;
@@ -145,11 +155,283 @@ body {
   background-image: linear-gradient(135deg, rgba(127, 127, 127, .20), rgba(127, 127, 127, .06));
 }
 .box canvas { display: block; width: 100%; height: 100%; }
+/* Asset exportado do Figma. `cover` centralizado é o equivalente exato do
+   scaleMode FILL; o recorte do modo CROP chega como background-position. */
+.box--asset {
+  background-size: cover; background-position: 50% 50%; background-repeat: no-repeat;
+}
 /* Sangra até a borda anulando o respiro lateral do card. */
 .box--bleed { margin-left: -32px; margin-right: -32px; }
 /* Fora do fluxo: fundo do card inteiro, ou sobreposição por cima. */
 .box--abs { position: absolute; margin: 0; z-index: 0; }
 .card.is-loading .box { opacity: .5; }
+
+/* ---------- editor lateral ----------
+   Um cartão flutuante, não uma coluna de borda a borda: ele começa abaixo do
+   topo e termina ACIMA da barra de baixo, que fica livre. `--bar-h` é a altura
+   real da barra, medida em ui/editor.ts — ela muda com o viewport, e chutar um
+   número aqui deixaria o cartão por cima da prateleira no celular.
+
+   Largura FIXA, deslocado para fora por `transform`; abrir é trazer ao zero.
+   Animar a largura pediria refluxo a cada frame — o parágrafo reembrulhando
+   sessenta vezes por segundo enquanto desliza. Assim o navegador anima uma
+   transformada só, e o conteúdo nem sabe que se mexeu. */
+#editor {
+  position: fixed; z-index: 22;
+  /* Altura pelo CONTEÚDO, com teto no espaço livre entre o topo e a barra.
+     Preso em `top`+`bottom` o cartão esticava até a barra mesmo com pouco
+     texto, e deixava de parecer um cartão. */
+  top: 48px; left: 0;
+  max-height: calc(100vh - 48px - var(--bar-h, 220px) - 12px);
+  display: flex; width: var(--editor-w);
+  /* Encostado na borda esquerda: só os cantos de fora se arredondam. */
+  border-radius: 0 20px 20px 0; overflow: hidden;
+  /* A sombra vive no cartão, e não no corpo: `overflow: hidden` recorta o que
+     está DENTRO, então uma sombra lá dentro morreria na borda. */
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+  transform: translateX(calc(-100% + var(--rail)));
+  transition: transform .34s var(--ease-out);
+  will-change: transform;
+}
+/* A transição mora nos DOIS estados de propósito: é assim que a ida ganha uma
+   curva e a volta ganha outra, sem uma linha de JavaScript. */
+#editor.is-open {
+  transform: none;
+  transition: transform .52s var(--ease-in);
+}
+
+.editor__body {
+  flex: 1; min-width: 0;
+  /* O vão entre as seções É o vão entre título e parágrafo: eles se encostam na
+     fronteira das duas, e é ele que define o respiro da composição. */
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 20px 16px 24px 22px;
+  background: var(--bg);
+  overflow-y: auto; scrollbar-width: none;
+  /* Chegar ao fim da lista aqui não pode continuar rolando o que está atrás. */
+  overscroll-behavior: contain;
+}
+.editor__body::-webkit-scrollbar { display: none; }
+/* Quando o texto passa da altura do cartão ele se dissolve na borda em vez de
+   ser decepado. A classe vem do JS porque CSS não sabe perguntar se rolou:
+   incondicional, a máscara apagava a última linha de controles mesmo com tudo
+   cabendo — e a linha apagada parecia desabilitada. */
+.editor__body.is-cut {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 30px), transparent);
+}
+
+/* A lombada é o botão inteiro, e fica na borda DIREITA do painel: recolhido ela
+   é a única coisa visível; aberto, é a alça que fecha. Uma só, no mesmo lugar. */
+.editor__handle {
+  flex: none; width: var(--rail);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 0; border: 0;
+  background: var(--surface-sunken); color: var(--muted);
+  font: inherit; font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
+  cursor: pointer; transition: background .22s ease, color .22s ease;
+}
+.editor__handle:hover { background: var(--surface); color: var(--paper); }
+.editor__handle:focus-visible { outline: 1px solid var(--paper); outline-offset: -3px; }
+.editor__handle-label { writing-mode: vertical-rl; transform: rotate(180deg); }
+/* Três traços: a pegada de sempre, sem precisar de ícone importado. */
+.editor__grip {
+  width: 13px; height: 9px;
+  border-top: 1px solid currentColor; border-bottom: 1px solid currentColor;
+  position: relative;
+}
+.editor__grip::after {
+  content: ""; position: absolute; left: 0; top: 4px;
+  width: 100%; height: 1px; background: currentColor;
+}
+
+/* O par ativo, e é a única legenda que sobrou no painel. O "restaurar" mora
+   nesta mesma linha: sozinho lá embaixo ele custava 58px de altura, e altura é
+   o que falta — o cartão termina onde a barra de baixo começa. */
+.editor__pair {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 2px;
+  font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--paper);
+}
+.editor__pair i { font-style: normal; color: var(--muted); }
+.editor__pair span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ed { display: flex; flex-direction: column; gap: 10px; }
+/* Os controles se afastam um pouco do texto que governam, e o par de textos
+   fica com o menor vão da coluna: é o que faz os dois lerem como uma coisa só,
+   e o aparato como aparato. */
+.ed--title .ed__text { margin-top: 6px; }
+.ed--body .ed__ctls { margin-top: 14px; }
+
+/* O campo editável não tem caixa: mesmo fundo do painel, sem filete e sem
+   recuo lateral, alinhado com o resto da coluna. Uma caixa em volta faria a
+   amostra parecer um formulário, e o que ela precisa parecer é página. */
+.ed__text {
+  min-height: 56px; color: var(--paper);
+  /* Sem anel de foco: num campo de texto quem diz onde está o cursor é o
+     CURSOR, e um retângulo branco em volta da amostra disputa com ela. */
+  outline: none;
+  /* Palavra longa em corpo 120 não pode empurrar a largura do painel. */
+  overflow-wrap: break-word;
+}
+
+/* ---------- controles do editor ----------
+   Mesmo vocabulário do trilho do dock, que veio do `PreviewSlider` do
+   react-bits: a pílula inteira é o controle, o preenchimento cresce da
+   esquerda, o cursor mora na borda dele, o valor fica por dentro, e o estado é
+   dito pelo TOM do preenchimento — nunca por cor nem por contorno. A lista
+   suspensa entra na mesma pílula para as duas linhas lerem como um bloco só. */
+.ed__ctls { display: flex; flex-direction: column; gap: 6px; }
+.ed__row { display: flex; align-items: center; gap: 8px; }
+
+.ed__trigger, .ed__pill {
+  height: 34px; border-radius: 12px;
+  background: var(--surface);
+  transition: background .2s ease;
+}
+/* O rótulo dentro do controle, como na referência: o que ele governa fica à
+   esquerda, em tom apagado, e o valor à direita, em branco. Some a legenda de
+   fora e o controle passa a se explicar sozinho. */
+.ed__cap {
+  font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap;
+}
+
+.ed__pick { position: relative; flex: none; width: 150px; }
+.ed__trigger {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 0 13px 0 14px; border: 0;
+  color: var(--paper); font: inherit; cursor: pointer;
+}
+.ed__trigger:hover { background: #181818; }
+.ed__trigger:focus-visible { outline: 1px solid var(--paper); outline-offset: 2px; }
+.ed__pickval {
+  flex: 1; min-width: 0; text-align: right;
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Chevron de dois traços, girando 180° quando a lista abre. */
+.ed__chev {
+  flex: none; width: 6px; height: 6px; margin-top: -3px;
+  border-right: 1px solid var(--paper); border-bottom: 1px solid var(--paper);
+  transform: rotate(45deg);
+  transition: transform .22s var(--ease-out);
+}
+.ed__pick.is-open .ed__chev { transform: rotate(225deg); margin-top: 2px; }
+
+/* O painel da lista. Fundo um degrau acima do controle para não ler como parte
+   dele, cantos do mesmo raio da pílula e sombra em vez de filete — a mesma
+   escolha da barra de baixo e do próprio painel. */
+.ed__list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 3;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px; border-radius: 14px;
+  background: var(--surface-hover);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .6);
+  /* A abertura é a mesma curva do painel, em escala: sobe 6px e assenta. */
+  animation: list-in .18s var(--ease-in);
+}
+.ed__list[hidden] { display: none; }
+.ed__pick.is-up .ed__list { top: auto; bottom: calc(100% + 6px); }
+@keyframes list-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.ed__pick.is-up .ed__list { animation-name: list-in-up; }
+@keyframes list-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.ed__opt {
+  padding: 9px 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  font: inherit; font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  text-align: left; cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.ed__opt:hover { background: var(--surface-active); color: var(--paper); }
+/* O foco não ganha anel: dentro da lista ele já é o item realçado, e um
+   contorno por cima do realce vira dois estados dizendo a mesma coisa. */
+.ed__opt:focus-visible { background: var(--surface-active); color: var(--paper); outline: none; }
+/* O escolhido é o mais claro da escala, como o chip ativo da prateleira. */
+.ed__opt.is-on { color: var(--paper); }
+
+/* `--pct` é a única variável: preenchimento e cursor derivam dela. */
+.ed__pill {
+  --pct: 50%;
+  position: relative; flex: 1; min-width: 0; overflow: hidden;
+  cursor: ew-resize;
+}
+.ed__pill:hover { background: #181818; }
+/* O anel de foco vive no contêiner porque quem recebe o foco é o input que está
+   por cima dele, invisível. */
+.ed__pill:has(:focus-visible) { outline: 1px solid var(--paper); outline-offset: 2px; }
+
+.ed__pill::before {
+  content: ""; position: absolute; inset: 0 auto 0 0;
+  width: var(--pct); border-radius: 14px;
+  background: #272727; transition: background .2s ease;
+}
+.ed__pill:hover::before, .ed__pill:has(:active)::before { background: var(--surface-active); }
+
+/* O cursor senta na borda do preenchimento, por dentro. `max()` o segura
+   visível no zero, onde a margem negativa o jogaria para fora da pílula. */
+.ed__pill::after {
+  content: ""; position: absolute; top: 50%; left: max(11px, var(--pct));
+  width: 3px; height: 17px; margin-left: -8px; margin-top: -8.5px;
+  border-radius: 2px; background: var(--paper); opacity: .85;
+  transition: opacity .2s ease;
+}
+.ed__pill:hover::after, .ed__pill:has(:active)::after { opacity: 1; }
+
+/* O input continua sendo o controle de verdade — teclado, arrasto e ARIA —, só
+   que transparente e esticado sobre a pílula inteira. O polegar dele fica com
+   2px para o mapeamento clique→valor bater com o desenho de trás: quanto mais
+   largo o polegar, mais a faixa útil encolhe nas pontas e mais o cursor
+   desenhado descola do lugar onde o dedo tocou. */
+.ed__range {
+  -webkit-appearance: none; appearance: none;
+  position: absolute; inset: 0; z-index: 1;
+  width: 100%; height: 100%; margin: 0;
+  background: transparent; opacity: 0; cursor: ew-resize;
+}
+.ed__range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 2px; height: 100%; border: 0;
+}
+.ed__range::-moz-range-thumb { width: 2px; height: 100%; border: 0; }
+
+/* Rótulo e valor moram DENTRO da pílula, um em cada ponta, e ficam por cima do
+   preenchimento e do cursor — um traço de 3px cortando a palavra no meio lê
+   pior do que passando por trás dela. `pointer-events: none` porque quem tem de
+   receber o dedo é o input invisível: sem isso, arrastar a partir do rótulo não
+   moveria nada. */
+.ed__pill .ed__cap,
+.ed__pill .ed__value {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 2; pointer-events: none;
+}
+/* Rótulo e valor ficam JUNTOS, na direita — não um em cada ponta. À esquerda o
+   cursor cruzava a palavra no meio: a entrelinha abre em 1.02, que cai a 23% do
+   trilho, exatamente sobre "entrelinha". Na direita eles só se encontram no fim
+   do curso, que é o mesmo acordo que o trilho do dock já faz com o valor dele. */
+.ed__pill .ed__cap { right: 62px; }
+/* Reservado: "17px" e "120px" têm contagens de glifo diferentes, e sem piso o
+   valor empurraria a própria caixa a cada passo. */
+.ed__value {
+  right: 14px; min-width: 40px; text-align: right;
+  font-size: 9px; letter-spacing: .1em; font-weight: 400;
+  color: var(--paper); opacity: .75;
+}
+
+.ed__reset {
+  margin-left: auto; padding: 5px 10px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--muted);
+  font: inherit; font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
+  cursor: pointer; transition: background .22s ease, color .22s ease;
+}
+.ed__reset:hover { background: var(--surface); color: var(--paper); }
+.ed__reset:focus-visible { outline: 1px solid var(--paper); outline-offset: 2px; }
 
 /* ---------- dica ---------- */
 #hint {
@@ -161,13 +443,85 @@ body {
 }
 #hint.is-gone { opacity: 0; }
 
+/* ---------- barra de baixo ----------
+   Prateleira e dock eram irmãos do palco, cada um com fundo opaco e filete
+   próprio: duas barras duras que cortavam a janela em três retângulos e faziam o
+   campo terminar antes da borda. Agora os dois flutuam sobre o campo, sem fundo
+   nenhum, e o que separa controle de card é UMA faixa de degradê — escura o
+   bastante embaixo para o controle ler, e some antes de virar aresta. */
+#bottom {
+  position: fixed; inset: auto 0 0 0; z-index: 15;
+  /* O véu cobre um pedaço do campo; ponteiro só nas barras, senão a faixa
+     roubaria o parallax e a rolagem da área que ela apenas escurece. */
+  pointer-events: none;
+}
+#bottom > * { pointer-events: auto; }
+
+/* O degradê sobe 132px ALÉM do topo das barras: começar no topo delas devolveria
+   uma aresta no lugar exata onde estava o filete.
+   Os pontos intermediários desenham uma curva em S. Um degradê linear de alfa
+   termina em linha reta, e o olho lê essa reta como borda (banda de Mach); aqui
+   a inclinação chega a zero devagar e o topo da faixa desaparece de verdade.
+
+   O pico é .90 e fica. Com o fundo terminando claro, esta faixa e o degradê
+   disputam o mesmo lugar — o ponto mais escuro dela cai exatamente no ponto
+   mais claro dele. Já tentamos baixar para .30 em nome do fundo, e a navegação
+   perdeu a leitura na hora: a prateleira rola cards CLAROS por trás dos chips,
+   e sem o preto embaixo os dois viram a mesma massa. Entre ver o degradê
+   inteiro e conseguir usar a barra, ganha a barra. */
+#bottom::before {
+  content: ""; position: absolute; inset: -132px 0 0 0; z-index: -1;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, .90) 0%,
+    rgba(0, 0, 0, .88) 10%,
+    rgba(0, 0, 0, .82) 22%,
+    rgba(0, 0, 0, .71) 34%,
+    rgba(0, 0, 0, .57) 46%,
+    rgba(0, 0, 0, .41) 58%,
+    rgba(0, 0, 0, .26) 70%,
+    rgba(0, 0, 0, .14) 81%,
+    rgba(0, 0, 0, .05) 91%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
 /* ---------- prateleira ---------- */
 #shelf-wrap {
-  position: relative; z-index: 15; flex: none;
-  border-top: 1px solid var(--line); background: var(--bg);
+  position: relative;
+  /* A varredura corre pelo topo da fileira e não pode vazar pelas bordas. */
+  overflow: hidden;
 }
+
+/* Corte novo a caminho: a fileira recua e uma linha varre o topo. Recuar não
+   é enfeite — é o que esconde os chips surgindo um a um conforme cada fonte
+   chega, que era metade do aspecto de engasgo. */
+#shelf { transition: opacity .2s ease; }
+#shelf-wrap.is-busy #shelf { opacity: .4; }
+
+#shelf-wrap::after {
+  content: ""; position: absolute; top: 0; left: 0;
+  width: 34%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--paper), transparent);
+  opacity: 0; transition: opacity .2s ease;
+  pointer-events: none;
+}
+#shelf-wrap.is-busy::after {
+  opacity: .75;
+  animation: sweep 1.05s ease-in-out infinite;
+}
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(295%); }
+}
+/* O respiro de cima é a folga do dock: o card cresce 28% a partir da BASE, e
+   `#shelf` é contêiner de rolagem, então o que passar do topo seria cortado.
+   44px cobrem o crescimento do card mais alto com sobra. */
 #shelf {
-  display: flex; gap: 4px; padding: 14px 26px;
+  /* 8px e não 4: com fundo próprio, os cards precisam de ar entre as pílulas
+     para lerem como cards, e não como uma faixa recortada. */
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 44px 26px 14px;
   overflow-x: auto; scrollbar-width: none;
   /* No toque, arrastar sobre o bloco rola a lista. */
   -webkit-overflow-scrolling: touch; touch-action: pan-x;
@@ -177,68 +531,164 @@ body {
 
 /* Largura fixa para a fileira ficar regular. 150px acomodam ~18 caracteres,
    que cobrem 94% dos nomes do catálogo; o resto recebe reticências. */
+/* Mesmo vocabulário do scrubber: pílula de 14px, sem traço, e o estado dito
+   pelo TOM do preenchimento — #141414 parado, mais claro sob o cursor, mais
+   claro ainda quando ativo. A borda saiu porque num sistema sem cor o contorno
+   competia com a única hierarquia que sobrou, que é a luminância. */
 .chip {
   flex: none; display: flex; flex-direction: column; gap: 5px;
-  width: 150px; padding: 12px 14px 11px;
-  background: none; border: 1px solid transparent; color: var(--paper);
+  width: 150px; padding: 13px 15px 12px;
+  border: 0; border-radius: 14px;
+  background: var(--surface); color: var(--paper);
   font: inherit; text-align: left; cursor: pointer;
-  transition: border-color .2s, background .2s;
+  transition: background .22s ease, color .22s ease;
+  /* O dock escreve `transform` a cada frame; a origem na base faz o card subir
+     em vez de inchar para os dois lados, como num dock de verdade. */
+  transform-origin: bottom center;
+  will-change: transform;
 }
-.chip:hover, .chip:focus-visible { border-color: var(--line); background: rgba(233, 229, 221, .04); }
-.chip.is-active { border-color: var(--accent); }
+.chip:hover { background: var(--surface-hover); }
+/* Foco por anel externo: um `outline` não entra no fluxo, então não desfaz a
+   largura travada nem reintroduz o tremor que a borda causava. */
+.chip:focus-visible { background: var(--surface-hover); outline: 1px solid var(--paper); outline-offset: 2px; }
+.chip.is-active { background: var(--surface-active); }
+/* Altura TRAVADA. Com `align-items: baseline` a linha de base do grupo depende
+   do ascendente da fonte, então cada preview que chegava mudava a altura do
+   chip em até 3px — e isso subia pela prateleira até o palco, fazendo a barra
+   inteira tremer a cada corte. O respiro de 34px acomoda o desvio de qualquer
+   família sem deixar a caixa crescer. */
 .chip__samples {
   display: flex; gap: 10px; align-items: baseline;
   font-size: 30px; line-height: .95; margin-bottom: 3px;
+  height: 34px; flex: none;
 }
 .chip__samples span { display: block; }
 .chip__samples span:last-child { opacity: .62; }
-/* Um nome por linha: com os dois juntos, cada chip tinha largura própria. */
+/* Um nome por linha: com os dois juntos, cada chip tinha largura própria.
+   `line-height` em px, e não `normal`: `normal` sai das MÉTRICAS da fonte, e
+   era o que ainda sobrava do tremor — cada nome oscilava 1px, dois nomes por
+   chip, e a prateleira subia e descia 2px a cada troca de corte. */
 .chip__names {
   display: block; max-width: 100%;
-  font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  font-size: 9px; line-height: 12px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .chip__names--second { opacity: .62; }
-.chip.is-active .chip__names { color: var(--accent); }
+/* Ativo é o mais claro da escala, no fundo E no nome. */
+.chip.is-active .chip__names { color: var(--paper); }
 
+/* O "carregar mais" era tracejado para se dizer diferente. Sem traço nenhum na
+   fileira, ele se diz pelo fundo mais fundo — vazio em vez de cheio. */
 .chip--more {
   justify-content: center; align-items: center; text-align: center;
-  border-color: var(--line); border-style: dashed; gap: 3px;
+  gap: 3px; background: var(--surface-sunken);
 }
-.chip--more:hover { border-color: var(--paper); }
-.chip__plus { font-size: 26px; line-height: 1; color: var(--paper); }
+.chip--more:hover { background: var(--surface); }
+.chip__plus { font-size: 26px; line-height: 26px; color: var(--muted); }
+.chip--more:hover .chip__plus { color: var(--paper); }
 .chip__count { opacity: .55; }
 
 /* ---------- dock ---------- */
 #dock {
-  position: relative; z-index: 15; flex: none;
-  display: flex; align-items: center; justify-content: center; gap: 18px;
-  flex-wrap: wrap;
-  padding: 16px 26px;
-  border-top: 1px solid var(--line); background: var(--bg);
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  padding: 18px 26px;
 }
-.dock__label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 
-/* Dez marcações visíveis, alinhadas aos dez cortes reais do dado. */
-#contrast-wrap { position: relative; display: flex; flex-direction: column; gap: 3px; }
-#contrast { width: min(300px, 40vw); accent-color: var(--accent); margin: 0; }
-#contrast-ticks {
-  display: flex; justify-content: space-between;
-  padding: 0 6px; pointer-events: none;
+/* ---------- scrubber ----------
+   Anatomia do `PreviewSlider` do react-bits: o trilho é a pílula inteira, o
+   preenchimento cresce da esquerda, o cursor mora na borda dele e o valor fica
+   por cima. O input nativo não serve porque o desenho pede texto DENTRO do
+   trilho. `--pct` é a única variável; o resto deriva daqui. */
+.scrubber { width: min(560px, 78vw); }
+
+.scrubber__track {
+  --pct: 50%;
+  position: relative; overflow: hidden;
+  height: 56px; border-radius: 14px;
+  background: var(--surface);
+  cursor: ew-resize; touch-action: none;
+  /* O arrasto não pode selecionar o valor pelo caminho. */
+  user-select: none; -webkit-user-select: none;
+  transition: background .2s ease;
 }
-#contrast-ticks i { width: 1px; height: 5px; background: var(--line); }
-#dock button {
-  background: none; border: 1px solid var(--line); color: var(--muted);
-  font: inherit; font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
-  padding: 10px 18px; cursor: pointer; transition: color .2s, border-color .2s;
+.scrubber__track:hover { background: #181818; }
+.scrubber__track:focus-visible { outline: 1px solid var(--paper); outline-offset: 2px; }
+
+.scrubber__fill {
+  position: absolute; inset: 0 auto 0 0; width: var(--pct);
+  background: #272727; border-radius: 14px;
+  transition: background .2s ease;
 }
-#dock button:hover, #dock button:focus-visible { color: var(--paper); border-color: var(--paper); }
-#generate { background: var(--accent); border-color: var(--accent); color: #14120f; }
-#generate:hover, #generate:focus-visible { color: #14120f; border-color: var(--accent); filter: brightness(1.08); }
-/* Tecla de atalho lida como tecla, não como parte do rótulo do botão. */
-#dock kbd {
-  font: inherit; font-size: 8px; margin-left: 9px; padding: 3px 5px;
-  border: 1px solid currentColor; border-radius: 2px; opacity: .5;
+.scrubber__track:hover .scrubber__fill,
+.scrubber__track[data-dragging] .scrubber__fill { background: var(--surface-active); }
+
+/* As marcas ficam sob o preenchimento, então só se vê as do vão que falta. */
+.scrubber__ticks { position: absolute; inset: 0; }
+.scrubber__ticks i {
+  position: absolute; top: 50%; width: 1px; height: 10px;
+  margin-top: -5px; background: var(--paper); opacity: .18;
+}
+
+/* O cursor senta na borda do preenchimento, por dentro. `max()` segura ele
+   visível no zero, onde `translateX(-100%)` o jogaria para fora do trilho. */
+.scrubber__thumb {
+  position: absolute; top: 50%; left: max(14px, var(--pct));
+  width: 3px; height: 26px; border-radius: 2px;
+  margin-left: -10px; transform: translateY(-50%);
+  background: var(--paper); opacity: .85;
+  transition: opacity .2s ease;
+}
+.scrubber__track:hover .scrubber__thumb,
+.scrubber__track[data-dragging] .scrubber__thumb { opacity: 1; }
+
+/* Largura reservada: "6/10" e "10/10" têm contagens de glifo diferentes, e sem
+   piso o valor empurraria a própria caixa a cada passo. */
+.scrubber__value {
+  position: absolute; top: 50%; right: 20px; transform: translateY(-50%);
+  min-width: 52px; text-align: right;
+  font-size: 12px; line-height: 14px; letter-spacing: .12em;
+  color: var(--paper); opacity: .75;
+}
+
+/* ---------- indicador de troca ----------
+   Acende no centro a cada conjunto novo de fontes e fica no mínimo 300ms — o
+   piso mora em ui/controls.ts, aqui só o desenho. A pastilha existe porque o
+   campo rola cards BRANCOS por baixo: um anel solto sumiria em cima deles. */
+#busy {
+  position: fixed; inset: 0; z-index: 26;
+  display: grid; place-items: center;
+  pointer-events: none;
+  opacity: 0; transition: opacity .18s ease;
+}
+#busy.is-on { opacity: 1; }
+
+#busy .busy__ring {
+  width: 52px; height: 52px; border-radius: 16px;
+  background: rgba(10, 10, 10, .74); backdrop-filter: blur(6px);
+  display: grid; place-items: center;
+}
+/* O anel é o filho do meio, desenhado em ::before para o fundo não girar junto. */
+#busy .busy__ring::before {
+  content: ""; width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-top-color: var(--paper);
+  animation: busy-spin .7s linear infinite;
+}
+@keyframes busy-spin { to { transform: rotate(360deg); } }
+
+/* Sem movimento o anel congelaria numa posição qualquer e leria como defeito.
+   Aí ele vira um ponto pulsando — e a regra global de redução zera a duração
+   das ANIMAÇÕES, então esta precisa vir depois e reivindicar a sua. */
+@media (prefers-reduced-motion: reduce) {
+  #busy .busy__ring::before {
+    border-color: var(--paper);
+    animation: busy-pulse 1.4s ease-in-out infinite !important;
+    animation-duration: 1.4s !important;
+    animation-iteration-count: infinite !important;
+  }
+  @keyframes busy-pulse { 50% { opacity: .25; } }
 }
 
 /* ---------- carregamento ---------- */
@@ -253,8 +703,14 @@ body {
 
 @media (max-width: 720px) {
   #pair-meta { font-size: 9px; }
-  #dock { gap: 12px; padding: 12px 16px; }
-  #contrast { width: 46vw; }
+  /* Um terço de 390px não é painel, é fresta. */
+  #editor { width: min(86vw, 420px); top: 62px; bottom: calc(var(--bar-h, 200px) + 12px); }
+  .ed__pick { width: 132px; }
+  #dock { padding: 12px 16px; }
+  /* O trilho encolhe mas a pílula não pode virar um traço. */
+  .scrubber { width: 100%; }
+  .scrubber__track { height: 50px; }
+  .scrubber__value { right: 16px; font-size: 11px; }
   #hint { bottom: 218px; }
   #shelf-head, #shelf { padding-left: 16px; padding-right: 16px; }
   /* Sem largura fixa: o chip acompanha o nome, que nunca pode ser cortado. */

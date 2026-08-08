@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><title>sonda do controle</title></head>
+<body>
+<pre id="out" style="position:relative;z-index:1;background:#fff">rodando</pre>
+<script type="module">
+/**
+ * Sonda do controle de contraste.
+ *
+ * O trilho deixou de ser `<input type="range">` e virou `div[role=slider]`,
+ * porque o desenho pede texto DENTRO do trilho. O preço é que teclado, ARIA e
+ * arrasto passaram a ser código nosso — e código nosso quebra.
+ *
+ * Ela já ganhou o sustento: pegou que o handler global de setas do main.ts se
+ * excluía com `instanceof HTMLInputElement`, então cada seta andava um corte E
+ * navegava o par, e o `sync` da navegação desfazia o passo do slider.
+ */
+const out = document.getElementById("out");
+const L = [];
+const say = (s) => { L.push(s); out.textContent = L.join("\n"); };
+let falhas = 0;
+const check = (nome, real, esperado) => {
+  const ok = String(real) === String(esperado);
+  if (!ok) falhas++;
+  say(`${ok ? "  ok " : "FALHA"} ${nome.padEnd(44)} ${real}${ok ? "" : "   esperado: " + esperado}`);
+};
+
+try {
+  const f = document.createElement("iframe");
+  // DENTRO da viewport de proposito. Fora dela o Chrome nao renderiza o
+  // frame, e sem render nao ha `requestAnimationFrame` — todo efeito por
+  // frame (o dock, as timelines do GSAP) ficaria inerte e a sonda mediria
+  // um app pela metade. O `<pre>` do resultado fica por cima.
+  f.style.cssText = "width:1440px;height:820px;border:0;position:fixed;left:0;top:0;z-index:0";
+  f.src = "/?a=Bitter&b=Barlow&c=0.5";
+  document.body.appendChild(f);
+  await new Promise((r) => { f.onload = r; });
+  const d = f.contentDocument;
+  const w = f.contentWindow;
+  await d.fonts.ready;
+  for (let i = 0; i < 120 && !d.querySelector(".chip"); i++) await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 1200));
+
+  const track = d.getElementById("contrast");
+  const valor = d.getElementById("contrast-value");
+  const tecla = (key) => track.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+  const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
+  const contrasteNaUrl = () => new URL(w.location.href).searchParams.get("c");
+
+  say("ESTRUTURA");
+  check("role de slider", track.getAttribute("role"), "slider");
+  check("focavel pelo teclado", track.getAttribute("tabindex"), "0");
+  check("nove marcas", track.querySelectorAll(".scrubber__ticks i").length, 9);
+  check("sem rotulos no dock", d.querySelectorAll(".dock__label").length, 0);
+  check("sem botoes no dock", d.querySelectorAll("#dock button").length, 0);
+
+  /**
+   * O indicador de troca. A regra é de TEMPO, então só se prova medindo:
+   * aparece em toda troca de conjunto e fica no mínimo 300ms, mesmo quando o
+   * par já está em cache e o trabalho termina em 40ms.
+   */
+  say("\nINDICADOR DE TROCA");
+  const busy = d.getElementById("busy");
+  const aceso = () => busy.classList.contains("is-on");
+  check("nasce apagado", aceso(), false);
+
+  /** Acompanha o indicador por amostragem e devolve por quantos ms ficou aceso. */
+  const cronometrar = async (acao) => {
+    const t0 = performance.now();
+    acao();
+    let acendeu = false;
+    let inicio = 0;
+    for (let i = 0; i < 300; i++) {
+      if (aceso()) { if (!acendeu) { acendeu = true; inicio = performance.now(); } }
+      else if (acendeu) return { acendeu, ms: performance.now() - inicio, ate: performance.now() - t0 };
+      await pausa(10);
+    }
+    return { acendeu, ms: acendeu ? performance.now() - inicio : 0, ate: performance.now() - t0 };
+  };
+
+  // Seta: troca de par DENTRO do mesmo corte, o caminho mais barato que existe
+  // — a prateleira nem se reconstrói. É aqui que o piso precisa segurar.
+  const seta = await cronometrar(() => w.dispatchEvent(new w.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
+  check("acende ao trocar de par pela seta", seta.acendeu, true);
+  check("   e fica ao menos 300ms", seta.ms >= 295, true);
+  say(`         (ficou ${Math.round(seta.ms)}ms)`);
+
+  // Corte novo: reconstrói a prateleira inteira e pede dezenas de fontes.
+  const corte = await cronometrar(() => tecla("End"));
+  check("acende ao trocar de corte", corte.acendeu, true);
+  check("   e segura ate o conteudo chegar", corte.ms >= 295, true);
+  say(`         (ficou ${Math.round(corte.ms)}ms)`);
+
+  check("apaga sozinho depois", aceso(), false);
+
+  say("\nTECLADO");
+  tecla("Home"); await pausa(400);
+  check("Home vai ao primeiro corte", valor.textContent, "1/10");
+  check("   aria-valuenow acompanha", track.getAttribute("aria-valuenow"), "1");
+  tecla("End"); await pausa(400);
+  check("End vai ao ultimo corte", valor.textContent, "10/10");
+  tecla("ArrowLeft"); await pausa(400);
+  check("ArrowLeft volta um", valor.textContent, "9/10");
+  tecla("ArrowRight"); await pausa(400);
+  check("ArrowRight avanca um", valor.textContent, "10/10");
+  tecla("ArrowRight"); await pausa(400);
+  check("nao passa do teto", valor.textContent, "10/10");
+  tecla("Home");
+  for (let i = 0; i < 3; i++) tecla("ArrowLeft");
+  await pausa(400);
+  check("nao passa do piso", valor.textContent, "1/10");
+
+  /**
+   * O contrato que sustenta a fluidez: o CURSOR anda a cada toque, o trabalho
+   * pesado (repintar 15 cards, reconstruir a prateleira) espera o gesto parar.
+   */
+  say("\nCURSOR NA HORA, TRABALHO DEPOIS");
+  await pausa(500);
+  tecla("Home");
+  tecla("ArrowRight"); await pausa(30);
+  tecla("ArrowRight"); await pausa(30);
+  tecla("ArrowRight"); await pausa(30);
+  check("cursor andou os tres passos", valor.textContent, "4/10");
+  check("   e o corte ficou para tras", contrasteNaUrl(), "0.11");
+  await pausa(700);
+  check("   ao parar, o corte alcanca", contrasteNaUrl(), "0.33");
+
+  say("\nPONTEIRO");
+  const r = track.getBoundingClientRect();
+  const clique = (fx) => {
+    track.dispatchEvent(new w.PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, pointerId: 1, isPrimary: true,
+      clientX: r.left + r.width * fx, clientY: r.top + r.height / 2,
+    }));
+    track.dispatchEvent(new w.PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
+  };
+  clique(1); await pausa(400);
+  check("clique na ponta direita", valor.textContent, "10/10");
+  clique(0); await pausa(400);
+  check("clique na ponta esquerda", valor.textContent, "1/10");
+  clique(0.5); await pausa(400);
+  check("clique no meio", valor.textContent, "6/10");
+  await pausa(1200);
+  check("   e o corte do meio chega no app", contrasteNaUrl(), "0.56");
+
+  say(`\nTOTAL ${falhas}`);
+} catch (err) {
+  say(`ERRO: ${err && err.stack ? err.stack : String(err)}`);
+  say("TOTAL 99");
+}
+</script>
+</body>
+</html>

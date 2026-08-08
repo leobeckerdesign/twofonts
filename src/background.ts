@@ -9,18 +9,24 @@ float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 
 void main() {
   vec2 uv = gl_FragCoord.xy / u_res;
-  float d = distance(uv, vec2(0.5, 0.55));
-  vec3 base = mix(vec3(0.086, 0.086, 0.094), vec3(0.043, 0.043, 0.051), d * 1.6);
-  // Two subtle warm patches breathing out of phase.
+  // #2D2D2D (0.176) no topo, #AFAFAF (0.686) na base. A origem de gl_FragCoord
+  // fica EMBAIXO, então o eixo entra invertido. O expoente é o que segura o
+  // escuro na metade de cima: uma rampa linear já chegava cinza no meio da
+  // tela, e o campo precisa do tom fechado onde os cards claros passam.
+  float t = pow(1.0 - uv.y, 1.25);
+  vec3 base = mix(vec3(0.176), vec3(0.686), t);
+  // Two subtle patches breathing out of phase. Neutral: the field is greyscale,
+  // so they read as light moving, not as colour.
   float glow = 0.05 * sin(u_time * 0.18) + 0.06;
-  base += vec3(0.94, 0.33, 0.14) * glow * smoothstep(0.75, 0.0, distance(uv, vec2(0.28, 0.35)));
-  base += vec3(0.20, 0.45, 0.40) * glow * smoothstep(0.80, 0.0, distance(uv, vec2(0.78, 0.70)));
+  base += vec3(0.62) * glow * smoothstep(0.75, 0.0, distance(uv, vec2(0.28, 0.35)));
+  base += vec3(0.38) * glow * smoothstep(0.80, 0.0, distance(uv, vec2(0.78, 0.70)));
   base += (hash(gl_FragCoord.xy) - 0.5) * 0.022;
   gl_FragColor = vec4(base, 1.0);
 }`;
 
+/** Sem WebGL o fundo continua sendo o mesmo degradê, só que sem brilho e sem grão. */
 const FALLBACK_BACKGROUND =
-  "radial-gradient(circle at 30% 35%, #16110f, #0d0d0f 70%)";
+  "linear-gradient(to bottom, #2d2d2d 0%, #4c4c4c 32%, #747474 62%, #afafaf 100%)";
 
 function applyFallback(canvas: HTMLCanvasElement): void {
   canvas.style.background = FALLBACK_BACKGROUND;

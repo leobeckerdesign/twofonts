@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><title>sonda do dock</title></head>
+<body>
+<pre id="out" style="position:relative;z-index:1;background:#fff">rodando</pre>
+<script type="module">
+/**
+ * Sonda do dock da prateleira.
+ *
+ * O efeito é uma mola integrada a cada frame, escrita direto em `transform`.
+ * Nada disso aparece em teste unitário: depende de layout real, de ponteiro e
+ * de tempo passando. Aqui a pergunta é objetiva — o card sob o cursor cresce
+ * mais que os vizinhos, os vizinhos abrem espaço para os lados, e tudo volta
+ * ao lugar quando o ponteiro sai.
+ */
+const out = document.getElementById("out");
+const L = [];
+const say = (s) => { L.push(s); out.textContent = L.join("\n"); };
+let falhas = 0;
+const check = (nome, cond, detalhe = "") => {
+  if (!cond) falhas++;
+  say(`${cond ? "  ok " : "FALHA"} ${nome.padEnd(46)} ${detalhe}`);
+};
+
+try {
+  const f = document.createElement("iframe");
+  // DENTRO da viewport de proposito. Fora dela o Chrome nao renderiza o
+  // frame, e sem render nao ha `requestAnimationFrame` — todo efeito por
+  // frame (o dock, as timelines do GSAP) ficaria inerte e a sonda mediria
+  // um app pela metade. O `<pre>` do resultado fica por cima.
+  f.style.cssText = "width:1440px;height:820px;border:0;position:fixed;left:0;top:0;z-index:0";
+  f.src = "/";
+  document.body.appendChild(f);
+  await new Promise((r) => { f.onload = r; });
+  const d = f.contentDocument;
+  const w = f.contentWindow;
+  await d.fonts.ready;
+  for (let i = 0; i < 120 && !d.querySelector(".chip"); i++) await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 1500));
+
+  const shelf = d.getElementById("shelf");
+  const chips = [...d.querySelectorAll(".chip")];
+  const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const lerTransform = (el) => {
+    const m = new w.DOMMatrix(w.getComputedStyle(el).transform);
+    return { escala: m.a, desloca: m.e };
+  };
+
+  say(`AMBIENTE`);
+  say(`   hover fino          : ${w.matchMedia("(hover: hover) and (pointer: fine)").matches}`);
+  say(`   movimento reduzido  : ${w.matchMedia("(prefers-reduced-motion: reduce)").matches}`);
+  say(`   cards na fileira    : ${chips.length}`);
+
+  // Aponta para o centro do 4º card, longe das bordas (onde a fileira rolaria).
+  const alvo = chips[3];
+  const r = alvo.getBoundingClientRect();
+  const shelfR = shelf.getBoundingClientRect();
+  shelf.dispatchEvent(new w.PointerEvent("pointermove", {
+    bubbles: true, clientX: r.left + r.width / 2, clientY: shelfR.top + shelfR.height / 2,
+  }));
+  await pausa(700);
+
+  const t = chips.map(lerTransform);
+  say(`\nCOM O PONTEIRO NO CARD 4`);
+  for (let i = 0; i < Math.min(8, chips.length); i++) {
+    say(`   card ${i}  escala=${t[i].escala.toFixed(3)}  desloca=${t[i].desloca.toFixed(1)}px`);
+  }
+
+  check("o card sob o cursor cresceu", t[3].escala > 1.2, `escala=${t[3].escala.toFixed(3)}`);
+  check("   e é o MAIOR de todos", t.every((x, i) => i === 3 || x.escala <= t[3].escala + 1e-6));
+  check("vizinho imediato cresce menos", t[2].escala > 1.02 && t[2].escala < t[3].escala,
+    `${t[2].escala.toFixed(3)} < ${t[3].escala.toFixed(3)}`);
+  check("card distante fica no tamanho", Math.abs(t[7].escala - 1) < 0.01, `escala=${t[7].escala.toFixed(3)}`);
+  check("vizinho da esquerda abre para a esquerda", t[1].desloca < -1, `${t[1].desloca.toFixed(1)}px`);
+  check("vizinho da direita abre para a direita", t[5].desloca > 1, `${t[5].desloca.toFixed(1)}px`);
+  check("o card sob o cursor quase não anda", Math.abs(t[3].desloca) < 12, `${t[3].desloca.toFixed(1)}px`);
+
+  // A mola tem de assentar, senão o ticker nunca dorme.
+  const antes = chips.map(lerTransform);
+  await pausa(500);
+  const depois = chips.map(lerTransform);
+  const parou = antes.every((x, i) => Math.abs(x.escala - depois[i].escala) < 0.002);
+  check("a mola assenta em vez de oscilar", parou);
+
+  shelf.dispatchEvent(new w.PointerEvent("pointerleave", { bubbles: true }));
+  await pausa(900);
+  const fim = chips.map(lerTransform);
+  check("ao sair, tudo volta ao tamanho", fim.every((x) => Math.abs(x.escala - 1) < 0.01),
+    `maior=${Math.max(...fim.map((x) => x.escala)).toFixed(3)}`);
+  check("   e ao lugar", fim.every((x) => Math.abs(x.desloca) < 1),
+    `maior=${Math.max(...fim.map((x) => Math.abs(x.desloca))).toFixed(1)}px`);
+
+  say(`\nTOTAL ${falhas}`);
+} catch (err) {
+  say(`ERRO: ${err && err.stack ? err.stack : String(err)}`);
+  say("TOTAL 99");
+}
+</script>
+</body>
+</html>

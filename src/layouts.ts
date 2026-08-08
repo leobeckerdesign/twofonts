@@ -1,5 +1,6 @@
 import spec from "./layouts.json";
 import { renderBlocks, type RenderContext } from "./render";
+import { sequence } from "./sequence";
 import type { CardKind, CardSpec, LayoutsFile } from "./spec";
 
 /**
@@ -31,10 +32,17 @@ const file = spec as LayoutsFile;
 /** Par e contraste que o arquivo do Figma congela. A importação usa para inverter tamanhos. */
 export const FROZEN = file.frozen;
 
-/** Os cards ainda como dado, para quem precisa da estrutura e não do HTML. */
-export const CARDS: CardSpec[] = file.cards;
+/**
+ * Os cards ainda como dado, para quem precisa da estrutura e não do HTML.
+ *
+ * A ordem NÃO é a do arquivo: `sequence` reintercala por contraste, para que
+ * dois brancos ou dois pretos nunca caiam lado a lado no campo. Fica aqui, e
+ * não no `layouts.json`, porque assim a regra sobrevive à próxima importação
+ * do Figma — o Leo reordena os frames à vontade e o campo continua alternando.
+ */
+export const CARDS: CardSpec[] = sequence(file.cards);
 
-export const LAYOUTS: Layout[] = file.cards.map((card) => ({
+export const LAYOUTS: Layout[] = CARDS.map((card) => ({
   id: card.id,
   kind: card.kind,
   w: card.w,

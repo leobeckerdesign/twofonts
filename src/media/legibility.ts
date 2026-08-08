@@ -56,22 +56,24 @@ export interface CardPalette {
  */
 export const PALETTES: Record<CardKind, CardPalette> = {
   paper: {
-    bg: hexToRgb(0xe9e5dd),
-    text: hexToRgb(0x131310),
-    near: hexToRgb(0xd6cfc0),
-    accent: hexToRgb(0xf05524),
+    bg: hexToRgb(0xffffff),
+    text: hexToRgb(0x000000),
+    near: hexToRgb(0xd9d9d9),
+    accent: hexToRgb(0xb0b0b0),
   },
   ink: {
-    bg: hexToRgb(0x131310),
-    text: hexToRgb(0xe9e5dd),
-    near: hexToRgb(0x24241d),
-    accent: hexToRgb(0x8a3a18),
+    bg: hexToRgb(0x000000),
+    text: hexToRgb(0xffffff),
+    near: hexToRgb(0x1c1c1c),
+    accent: hexToRgb(0x4a4a4a),
   },
+  // O terceiro tom é o cinza do card `accent`, cujo fundo em CSS é um radial de
+  // #ababab a #e7e7e7. O shader recebe o meio da faixa como base.
   accent: {
-    bg: hexToRgb(0xf05524),
-    text: hexToRgb(0x14120f),
-    near: hexToRgb(0xd8481c),
-    accent: hexToRgb(0xffb08a),
+    bg: hexToRgb(0xc4c4c4),
+    text: hexToRgb(0x000000),
+    near: hexToRgb(0xe7e7e7),
+    accent: hexToRgb(0xf2f2f2),
   },
 };
 

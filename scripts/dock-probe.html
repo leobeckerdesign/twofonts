@@ -5,13 +5,19 @@
 <pre id="out" style="position:relative;z-index:1;background:#fff">rodando</pre>
 <script type="module">
 /**
- * Sonda do dock da prateleira.
+ * Sonda da lente da vitrine.
  *
  * O efeito é uma mola integrada a cada frame, escrita direto em `transform`.
  * Nada disso aparece em teste unitário: depende de layout real, de ponteiro e
  * de tempo passando. Aqui a pergunta é objetiva — o card sob o cursor cresce
  * mais que os vizinhos, os vizinhos abrem espaço para os lados, e tudo volta
  * ao lugar quando o ponteiro sai.
+ *
+ * O eixo virou o VERTICAL junto com a vitrine, e com ele o pico: numa fileira
+ * de chips o card crescia 28%, numa coluna de cards cresce 6% — 28% de 300px
+ * seriam 84px saltando por cima do campo. Os limites daqui acompanham essa
+ * mudança de escala; o que se cobra continua sendo a forma da lente, não o
+ * número.
  */
 const out = document.getElementById("out");
 const L = [];
@@ -42,39 +48,42 @@ try {
   const chips = [...d.querySelectorAll(".chip")];
   const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // `m.d` e `m.f`: a escala e o deslocamento do eixo Y, que é onde a lente
+  // trabalha desde que a vitrine ficou em pé.
   const lerTransform = (el) => {
     const m = new w.DOMMatrix(w.getComputedStyle(el).transform);
-    return { escala: m.a, desloca: m.e };
+    return { escala: m.d, desloca: m.f };
   };
 
   say(`AMBIENTE`);
   say(`   hover fino          : ${w.matchMedia("(hover: hover) and (pointer: fine)").matches}`);
   say(`   movimento reduzido  : ${w.matchMedia("(prefers-reduced-motion: reduce)").matches}`);
-  say(`   cards na fileira    : ${chips.length}`);
+  say(`   cards na coluna     : ${chips.length}`);
 
-  // Aponta para o centro do 4º card, longe das bordas (onde a fileira rolaria).
-  const alvo = chips[3];
+  // Aponta para o centro do 3º card: fundo o bastante na pilha para ter vizinho
+  // dos dois lados, e ainda dentro da janela de 820px.
+  const alvo = chips[2];
   const r = alvo.getBoundingClientRect();
   const shelfR = shelf.getBoundingClientRect();
   shelf.dispatchEvent(new w.PointerEvent("pointermove", {
-    bubbles: true, clientX: r.left + r.width / 2, clientY: shelfR.top + shelfR.height / 2,
+    bubbles: true, clientX: shelfR.left + shelfR.width / 2, clientY: r.top + r.height / 2,
   }));
   await pausa(700);
 
   const t = chips.map(lerTransform);
-  say(`\nCOM O PONTEIRO NO CARD 4`);
+  say(`\nCOM O PONTEIRO NO CARD 3`);
   for (let i = 0; i < Math.min(8, chips.length); i++) {
     say(`   card ${i}  escala=${t[i].escala.toFixed(3)}  desloca=${t[i].desloca.toFixed(1)}px`);
   }
 
-  check("o card sob o cursor cresceu", t[3].escala > 1.2, `escala=${t[3].escala.toFixed(3)}`);
-  check("   e é o MAIOR de todos", t.every((x, i) => i === 3 || x.escala <= t[3].escala + 1e-6));
-  check("vizinho imediato cresce menos", t[2].escala > 1.02 && t[2].escala < t[3].escala,
-    `${t[2].escala.toFixed(3)} < ${t[3].escala.toFixed(3)}`);
-  check("card distante fica no tamanho", Math.abs(t[7].escala - 1) < 0.01, `escala=${t[7].escala.toFixed(3)}`);
-  check("vizinho da esquerda abre para a esquerda", t[1].desloca < -1, `${t[1].desloca.toFixed(1)}px`);
-  check("vizinho da direita abre para a direita", t[5].desloca > 1, `${t[5].desloca.toFixed(1)}px`);
-  check("o card sob o cursor quase não anda", Math.abs(t[3].desloca) < 12, `${t[3].desloca.toFixed(1)}px`);
+  check("o card sob o cursor cresceu", t[2].escala > 1.04, `escala=${t[2].escala.toFixed(3)}`);
+  check("   e é o MAIOR de todos", t.every((x, i) => i === 2 || x.escala <= t[2].escala + 1e-6));
+  check("vizinho imediato cresce menos", t[1].escala > 1.005 && t[1].escala < t[2].escala,
+    `${t[1].escala.toFixed(3)} < ${t[2].escala.toFixed(3)}`);
+  check("card distante fica no tamanho", Math.abs(t[6].escala - 1) < 0.01, `escala=${t[6].escala.toFixed(3)}`);
+  check("vizinho de cima abre para cima", t[1].desloca < -0.5, `${t[1].desloca.toFixed(1)}px`);
+  check("vizinho de baixo abre para baixo", t[3].desloca > 0.5, `${t[3].desloca.toFixed(1)}px`);
+  check("o card sob o cursor quase não anda", Math.abs(t[2].desloca) < 6, `${t[2].desloca.toFixed(1)}px`);
 
   // A mola tem de assentar, senão o ticker nunca dorme.
   const antes = chips.map(lerTransform);

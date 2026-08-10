@@ -46,9 +46,11 @@ async function boot(): Promise<void> {
 
   let state: AppState = stateFromUrl(data) ?? { ...first, contrast: url.contrast };
 
-  // O `ignore` do campo é o painel: o observador do GSAP escuta a roda na
-  // JANELA, então rolar dentro do editor rolaria o campo atrás dele.
-  const field = new Field(fieldRoot, "#editor");
+  // O `ignore` do campo são os dois painéis: o observador do GSAP escuta a roda
+  // na JANELA, então rolar dentro deles rolaria o campo atrás. A vitrine entrou
+  // na lista ao ficar em pé — deitada ela rolava pela posição do ponteiro e não
+  // disputava a roda com ninguém; agora a roda é a afordância dela.
+  const field = new Field(fieldRoot, "#editor, #gallery");
   const controls = new Controls();
   const shelf = new Shelf(document.getElementById("shelf")!);
   const editor = new Editor(weightRoles(data, state.contrast));

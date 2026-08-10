@@ -41,15 +41,20 @@
 
   <p id="hint" aria-hidden="true">role para navegar</p>
 
-  <!-- Prateleira e dock saíram do fluxo e viraram uma sobreposição só. Enquanto
-       eram irmãos do palco, cada um trazia o próprio fundo opaco e a tela virava
-       três retângulos empilhados; agora o campo ocupa a janela inteira, os cards
-       passam por baixo e quem separa os controles do campo é o degradê do #bottom. -->
-  <div id="bottom">
+  <!-- A vitrine. Era uma fileira horizontal na base; virou uma coluna na borda
+       DIREITA — o editor já ocupa a esquerda, e os dois painéis do mesmo lado
+       disputariam a mesma faixa de tela. Em pé cada item deixa de ser um chip
+       de 150px e vira um card: as duas fontes escritas com o próprio primeiro
+       nome, em corpo grande, que é o que se está de fato escolhendo. -->
+  <aside id="gallery" aria-label="Pares disponíveis neste recorte">
     <div id="shelf-wrap">
       <div id="shelf" role="group" aria-label="Pares disponíveis neste recorte"></div>
     </div>
+  </aside>
 
+  <!-- A barra de baixo ficou só com o dock. O campo ocupa a janela inteira, os
+       cards passam por baixo e quem separa o controle do campo é o degradê. -->
+  <div id="bottom">
     <!-- Anatomia do `PreviewSlider` do react-bits: trilho como role="slider", com
          preenchimento, marcas e o cursor na borda do preenchimento. O input nativo
          saiu porque o desenho pede TEXTO dentro do trilho, o que nenhum

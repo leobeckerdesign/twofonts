@@ -28,6 +28,16 @@
      Um terço da tela, com piso para caber e teto para não virar deserto. */
   --rail: 48px;
   --editor-w: clamp(320px, 33.33vw, 560px);
+  /* A vitrine, na borda oposta. Mais estreita que o editor de propósito: ela
+     mostra duas palavras e uma legenda, e a única coisa que a faria querer mais
+     largura seria escrever o nome completo — que é justamente o que ela não
+     faz. `--card-w` é a largura útil do card, já descontado o respiro da caixa;
+     o card cresce 6% sob o cursor e precisa de sobra à ESQUERDA para não ser
+     cortado pela borda do contêiner de rolagem. */
+  --gallery-w: clamp(268px, 25vw, 356px);
+  --gallery-pad: 22px;
+  --gallery-lens: 26px;
+  --card-w: calc(var(--gallery-w) - var(--gallery-pad) - var(--gallery-lens));
   /* Entrada macia, saída curta. A curva de abertura desacelera longe do fim; a
      de fechamento não precisa de cerimônia — o painel só sai da frente. */
   --ease-in: cubic-bezier(.22, 1, .36, 1);
@@ -182,7 +192,7 @@ body {
      Preso em `top`+`bottom` o cartão esticava até a barra mesmo com pouco
      texto, e deixava de parecer um cartão. */
   top: 48px; left: 0;
-  max-height: calc(100vh - 48px - var(--bar-h, 220px) - 12px);
+  max-height: calc(100vh - 48px - var(--bar-h, 92px) - 12px);
   display: flex; width: var(--editor-w);
   /* Encostado na borda esquerda: só os cantos de fora se arredondam. */
   border-radius: 0 20px 20px 0; overflow: hidden;
@@ -433,9 +443,11 @@ body {
 .ed__reset:hover { background: var(--surface); color: var(--paper); }
 .ed__reset:focus-visible { outline: 1px solid var(--paper); outline-offset: 2px; }
 
-/* ---------- dica ---------- */
+/* ---------- dica ----------
+   Centrada no CAMPO, e não na janela: a vitrine come a faixa da direita, e
+   `left: 50%` deixava a frase visivelmente descentrada em relação aos cards. */
 #hint {
-  position: fixed; left: 50%; bottom: 190px; z-index: 18;
+  position: fixed; left: calc(50% - var(--gallery-w) / 2); bottom: 118px; z-index: 18;
   transform: translateX(-50%);
   font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
   color: var(--muted); opacity: .7; pointer-events: none;
@@ -448,17 +460,26 @@ body {
    próprio: duas barras duras que cortavam a janela em três retângulos e faziam o
    campo terminar antes da borda. Agora os dois flutuam sobre o campo, sem fundo
    nenhum, e o que separa controle de card é UMA faixa de degradê — escura o
-   bastante embaixo para o controle ler, e some antes de virar aresta. */
+   bastante embaixo para o controle ler, e some antes de virar aresta.
+
+   Com a vitrine em pé, sobrou só o dock aqui: a barra caiu de ~220px para ~92px,
+   e o degradê encolheu junto — mantido o mesmo desenho, a faixa escura tomava
+   um sexto da tela para escurecer atrás de um trilho de 56px. */
 #bottom {
   position: fixed; inset: auto 0 0 0; z-index: 15;
+  /* O trilho se centra no campo VISÍVEL, não na janela: a vitrine come a faixa
+     da direita, e centrar na janela deixava o controle visivelmente puxado para
+     o lado da coluna. O véu continua indo de ponta a ponta — ele é posicionado
+     à parte e não sabe deste respiro. */
+  padding-right: var(--gallery-w);
   /* O véu cobre um pedaço do campo; ponteiro só nas barras, senão a faixa
      roubaria o parallax e a rolagem da área que ela apenas escurece. */
   pointer-events: none;
 }
 #bottom > * { pointer-events: auto; }
 
-/* O degradê sobe 132px ALÉM do topo das barras: começar no topo delas devolveria
-   uma aresta no lugar exata onde estava o filete.
+/* O degradê sobe 104px ALÉM do topo da barra: começar no topo dela devolveria
+   uma aresta no lugar exato onde estava o filete.
    Os pontos intermediários desenham uma curva em S. Um degradê linear de alfa
    termina em linha reta, e o olho lê essa reta como borda (banda de Mach); aqui
    a inclinação chega a zero devagar e o topo da faixa desaparece de verdade.
@@ -466,11 +487,11 @@ body {
    O pico é .90 e fica. Com o fundo terminando claro, esta faixa e o degradê
    disputam o mesmo lugar — o ponto mais escuro dela cai exatamente no ponto
    mais claro dele. Já tentamos baixar para .30 em nome do fundo, e a navegação
-   perdeu a leitura na hora: a prateleira rola cards CLAROS por trás dos chips,
-   e sem o preto embaixo os dois viram a mesma massa. Entre ver o degradê
-   inteiro e conseguir usar a barra, ganha a barra. */
+   perdeu a leitura na hora: o campo rola cards CLAROS por trás do trilho, e sem
+   o preto embaixo os dois viram a mesma massa. Entre ver o degradê inteiro e
+   conseguir usar a barra, ganha a barra. */
 #bottom::before {
-  content: ""; position: absolute; inset: -132px 0 0 0; z-index: -1;
+  content: ""; position: absolute; inset: -104px 0 0 0; z-index: -1;
   background: linear-gradient(
     to top,
     rgba(0, 0, 0, .90) 0%,
@@ -486,22 +507,65 @@ body {
   );
 }
 
-/* ---------- prateleira ---------- */
+/* ---------- vitrine ----------
+   Era uma fileira na base; virou uma coluna na borda direita. A esquerda já é
+   do editor, e os dois no mesmo lado disputariam a mesma faixa de tela.
+
+   Deitada, a fileira tinha uma dimensão só para gastar — a largura — e por isso
+   o item era um chip de 150px com dois glifos `Aa`. Em pé sobra altura, e o
+   item passa a ser um card: as duas fontes escritas com o próprio primeiro
+   nome, em corpo de leitura, que é o que se está de fato escolhendo. */
+#gallery {
+  position: fixed; z-index: 16;
+  inset: 0 0 0 auto; width: var(--gallery-w);
+  display: flex;
+  /* O véu cobre um pedaço do campo; ponteiro só na coluna, senão a faixa
+     roubaria o parallax e a rolagem da área que ela apenas escurece. */
+  pointer-events: none;
+}
+#gallery > * { pointer-events: auto; }
+
+/* Mesma decisão da barra de baixo, girada 90°: os cards são escuros e o campo
+   rola cards BRANCOS por trás deles; sem preto por baixo os dois viram a mesma
+   massa. A faixa avança 132px ALÉM da coluna e chega a zero por uma curva em S
+   — um degradê linear de alfa termina em reta, e o olho lê a reta como borda
+   (banda de Mach). O pico é menor que o da barra (.82 contra .90) porque aqui a
+   faixa cobre um quarto da largura da tela, e não um sexto da altura. */
+#gallery::before {
+  content: ""; position: absolute; inset: 0 0 0 -132px; z-index: -1;
+  background: linear-gradient(
+    to left,
+    rgba(0, 0, 0, .82) 0%,
+    rgba(0, 0, 0, .80) 10%,
+    rgba(0, 0, 0, .75) 22%,
+    rgba(0, 0, 0, .65) 34%,
+    rgba(0, 0, 0, .52) 46%,
+    rgba(0, 0, 0, .38) 58%,
+    rgba(0, 0, 0, .24) 70%,
+    rgba(0, 0, 0, .13) 81%,
+    rgba(0, 0, 0, .05) 91%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
 #shelf-wrap {
-  position: relative;
-  /* A varredura corre pelo topo da fileira e não pode vazar pelas bordas. */
+  position: relative; flex: 1; min-width: 0;
+  /* A varredura corre pelo topo da coluna e não pode vazar pelas bordas. */
   overflow: hidden;
 }
 
-/* Corte novo a caminho: a fileira recua e uma linha varre o topo. Recuar não
-   é enfeite — é o que esconde os chips surgindo um a um conforme cada fonte
+/* Corte novo a caminho: a coluna recua e uma linha varre o topo. Recuar não
+   é enfeite — é o que esconde os cards surgindo um a um conforme cada fonte
    chega, que era metade do aspecto de engasgo. */
 #shelf { transition: opacity .2s ease; }
 #shelf-wrap.is-busy #shelf { opacity: .4; }
 
+/* A linha nasce onde os cards nascem, e não no topo da janela: a coluna começa
+   abaixo da barra de marca, e uma varredura correndo por trás dela seria uma
+   luz piscando sem causa visível. */
 #shelf-wrap::after {
-  content: ""; position: absolute; top: 0; left: 0;
-  width: 34%; height: 1px;
+  content: ""; position: absolute; top: 44px; left: var(--gallery-lens);
+  width: var(--card-w); height: 1px;
   background: linear-gradient(90deg, transparent, var(--paper), transparent);
   opacity: 0; transition: opacity .2s ease;
   pointer-events: none;
@@ -512,39 +576,46 @@ body {
 }
 @keyframes sweep {
   from { transform: translateX(-100%); }
-  to { transform: translateX(295%); }
+  to { transform: translateX(100%); }
 }
-/* O respiro de cima é a folga do dock: o card cresce 28% a partir da BASE, e
-   `#shelf` é contêiner de rolagem, então o que passar do topo seria cortado.
-   44px cobrem o crescimento do card mais alto com sobra. */
+
 #shelf {
-  /* 8px e não 4: com fundo próprio, os cards precisam de ar entre as pílulas
-     para lerem como cards, e não como uma faixa recortada. */
-  display: flex; align-items: flex-end; gap: 8px;
-  padding: 44px 26px 14px;
-  overflow-x: auto; scrollbar-width: none;
-  /* No toque, arrastar sobre o bloco rola a lista. */
-  -webkit-overflow-scrolling: touch; touch-action: pan-x;
-  cursor: ew-resize;
+  /* Os cards medem `offsetTop` para a lente saber quem está sob o cursor.
+     `relative` faz DESTE elemento o offsetParent deles: assim a medida sai no
+     mesmo referencial em que o ponteiro é convertido — a caixa de rolagem —, e
+     não no de um ancestral qualquer que o navegador escolhesse. */
+  position: relative; height: 100%;
+  display: flex; flex-direction: column; gap: 14px;
+  /* O respiro da esquerda é a folga da lente: o card cresce 6% a partir da
+     borda DIREITA, e `#shelf` é contêiner de rolagem — o que passar da borda
+     seria cortado. Em cima, 62px descem a primeira linha para baixo da marca. */
+  padding: 62px var(--gallery-pad) 26px var(--gallery-lens);
+  overflow-y: auto; scrollbar-width: none;
+  /* Chegar ao fim da lista aqui não pode continuar rolando o campo atrás. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; touch-action: pan-y;
+  /* As pontas se dissolvem em vez de serem decepadas: o card que sai por cima
+     passa por baixo da marca desaparecendo, e não cortado numa aresta. */
+  mask-image: linear-gradient(
+    to bottom, transparent 0, #000 58px, #000 calc(100% - 40px), transparent 100%
+  );
 }
 #shelf::-webkit-scrollbar { display: none; }
 
-/* Largura fixa para a fileira ficar regular. 150px acomodam ~18 caracteres,
-   que cobrem 94% dos nomes do catálogo; o resto recebe reticências. */
-/* Mesmo vocabulário do scrubber: pílula de 14px, sem traço, e o estado dito
-   pelo TOM do preenchimento — #141414 parado, mais claro sob o cursor, mais
-   claro ainda quando ativo. A borda saiu porque num sistema sem cor o contorno
-   competia com a única hierarquia que sobrou, que é a luminância. */
+/* Mesmo vocabulário do scrubber: caixa sem traço, e o estado dito pelo TOM do
+   preenchimento — #141414 parado, mais claro sob o cursor, mais claro ainda
+   quando ativo. A borda saiu porque num sistema sem cor o contorno competia com
+   a única hierarquia que sobrou, que é a luminância. */
 .chip {
-  flex: none; display: flex; flex-direction: column; gap: 5px;
-  width: 150px; padding: 13px 15px 12px;
-  border: 0; border-radius: 14px;
+  flex: none; display: flex; flex-direction: column;
+  width: var(--card-w); padding: 22px 24px 20px;
+  border: 0; border-radius: 22px;
   background: var(--surface); color: var(--paper);
   font: inherit; text-align: left; cursor: pointer;
-  transition: background .22s ease, color .22s ease;
-  /* O dock escreve `transform` a cada frame; a origem na base faz o card subir
-     em vez de inchar para os dois lados, como num dock de verdade. */
-  transform-origin: bottom center;
+  transition: background .22s ease;
+  /* A lente escreve `transform` a cada frame; a origem na direita faz o card
+     avançar sobre o campo em vez de inchar para dentro da própria coluna. */
+  transform-origin: right center;
   will-change: transform;
 }
 .chip:hover { background: var(--surface-hover); }
@@ -552,39 +623,51 @@ body {
    largura travada nem reintroduz o tremor que a borda causava. */
 .chip:focus-visible { background: var(--surface-hover); outline: 1px solid var(--paper); outline-offset: 2px; }
 .chip.is-active { background: var(--surface-active); }
-/* Altura TRAVADA. Com `align-items: baseline` a linha de base do grupo depende
-   do ascendente da fonte, então cada preview que chegava mudava a altura do
-   chip em até 3px — e isso subia pela prateleira até o palco, fazendo a barra
-   inteira tremer a cada corte. O respiro de 34px acomoda o desvio de qualquer
-   família sem deixar a caixa crescer. */
-.chip__samples {
-  display: flex; gap: 10px; align-items: baseline;
-  font-size: 30px; line-height: .95; margin-bottom: 3px;
-  height: 34px; flex: none;
-}
-.chip__samples span { display: block; }
-.chip__samples span:last-child { opacity: .62; }
-/* Um nome por linha: com os dois juntos, cada chip tinha largura própria.
-   `line-height` em px, e não `normal`: `normal` sai das MÉTRICAS da fonte, e
-   era o que ainda sobrava do tremor — cada nome oscilava 1px, dois nomes por
-   chip, e a prateleira subia e descia 2px a cada troca de corte. */
-.chip__names {
+
+/* A amostra. Duas palavras empilhadas, que é como o par se apresenta no palco —
+   título em cima, texto embaixo — e não dois glifos disputando a mesma linha de
+   base, que era o arranjo possível numa fileira de 150px.
+
+   O corpo sai da LARGURA do card, e não de um número fixo: a coluna é fluida
+   entre 268 e 356px, e uma medida travada ou estouraria na tela estreita ou
+   ficaria pequena demais na larga.
+
+   `line-height` sem unidade e `padding-block`: a altura da linha passa a vir do
+   corpo, e não das métricas da família, senão cada preview que chegasse mudaria
+   a altura do card — e o card deslocado é o mesmo que a lente está medindo. O
+   respiro vertical é o que salva ascendente e descendente altos do recorte que
+   as reticências exigem. */
+.chip__word {
   display: block; max-width: 100%;
-  font-size: 9px; line-height: 12px;
-  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  font-size: clamp(26px, calc(var(--card-w) * .125), 40px);
+  line-height: 1.1; letter-spacing: -.015em;
+  padding-block: .06em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.chip__names--second { opacity: .62; }
-/* Ativo é o mais claro da escala, no fundo E no nome. */
-.chip.is-active .chip__names { color: var(--paper); }
+/* A segunda fonte é a mesma amostra num degrau abaixo de luminância: as duas
+   precisam ser legíveis, mas uma delas é a que o card destaca. */
+.chip__word--second { color: #a6a6a6; }
+.chip.is-active .chip__word--second { color: #cfcfcf; }
+
+/* A legenda é o que o primeiro nome não diz: "Libre" pode ser Baskerville ou
+   Franklin. Fica em mono — é a única linha do card que não troca de fonte, e
+   por isso é a única que pode ser cortada sem estragar a demonstração. */
+.chip__pair {
+  display: block; max-width: 100%; margin-top: 15px;
+  font-size: 9px; line-height: 12px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chip.is-active .chip__pair { color: var(--paper); }
 
 /* O "carregar mais" era tracejado para se dizer diferente. Sem traço nenhum na
-   fileira, ele se diz pelo fundo mais fundo — vazio em vez de cheio. */
+   coluna, ele se diz pelo fundo mais fundo — vazio em vez de cheio. */
 .chip--more {
   justify-content: center; align-items: center; text-align: center;
-  gap: 3px; background: var(--surface-sunken);
+  gap: 3px; padding: 26px 24px; background: var(--surface-sunken);
 }
 .chip--more:hover { background: var(--surface); }
+.chip--more .chip__pair { margin-top: 6px; }
 .chip__plus { font-size: 26px; line-height: 26px; color: var(--muted); }
 .chip--more:hover .chip__plus { color: var(--paper); }
 .chip__count { opacity: .55; }
@@ -704,19 +787,31 @@ body {
 @media (max-width: 720px) {
   #pair-meta { font-size: 9px; }
   /* Um terço de 390px não é painel, é fresta. */
-  #editor { width: min(86vw, 420px); top: 62px; bottom: calc(var(--bar-h, 200px) + 12px); }
+  #editor { width: min(86vw, 420px); top: 62px; bottom: calc(var(--bar-h, 92px) + 12px); }
   .ed__pick { width: 132px; }
   #dock { padding: 12px 16px; }
   /* O trilho encolhe mas a pílula não pode virar um traço. */
   .scrubber { width: 100%; }
   .scrubber__track { height: 50px; }
   .scrubber__value { right: 16px; font-size: 11px; }
-  #hint { bottom: 218px; }
-  #shelf-head, #shelf { padding-left: 16px; padding-right: 16px; }
-  /* Sem largura fixa: o chip acompanha o nome, que nunca pode ser cortado. */
-  .chip { padding: 10px 12px 8px; }
-  .chip__samples { font-size: 26px; }
-  .chip__names { font-size: 8.5px; letter-spacing: .08em; }
+  /* O trilho é um CONTROLE e precisa de curso: espremido no campo que sobra
+     viraria um traço de 148px, então ele retoma a largura toda e a coluna é que
+     para acima da barra. A dica não tem essa exigência e continua centrada no
+     campo visível — centrá-la na janela a jogaria por baixo da coluna. */
+  #hint { bottom: 104px; }
+  #bottom { padding-right: 0; }
+  #gallery { bottom: calc(var(--bar-h, 92px) + 4px); }
+  /* A coluna vira uma faixa: 25vw de 390px são 98px, que não é card nenhum.
+     Mais da metade da tela para a vitrine é caro, mas o campo continua legível
+     por baixo do véu — e é a vitrine que está em foco quando se olha para cá. */
+  :root {
+    --gallery-w: min(62vw, 268px);
+    --gallery-pad: 14px;
+    --gallery-lens: 16px;
+  }
+  #shelf { padding-top: 54px; padding-bottom: 18px; gap: 10px; }
+  .chip { padding: 16px 18px 15px; border-radius: 18px; }
+  .chip__pair { margin-top: 11px; font-size: 8.5px; letter-spacing: .1em; }
 }
 
 @media (prefers-reduced-motion: reduce) {

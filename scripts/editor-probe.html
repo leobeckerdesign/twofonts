@@ -77,8 +77,14 @@ try {
   const cartao = painel.getBoundingClientRect();
   check("o cartao nao encosta no topo", cartao.top > 0, true);
   check("o cartao termina acima da barra", Math.round(cartao.bottom) <= Math.round(barra.top), true);
-  check("a barra continua de ponta a ponta",
-    Math.round(d.getElementById("shelf-wrap").getBoundingClientRect().left), 0);
+  check("a barra continua de ponta a ponta", Math.round(barra.left), 0);
+  // A vitrine é do outro lado, e abrir o painel não pode empurrá-la: os dois são
+  // fixos, cada um ancorado na sua borda. Enquanto ela ficava embaixo, quem
+  // provava isso era a barra; em pé, a prova é a coluna continuar colada na
+  // direita — e o cartão aberto parar antes de encostar nela.
+  const coluna = d.getElementById("gallery").getBoundingClientRect();
+  check("a vitrine continua colada na direita", Math.round(coluna.right), w.innerWidth);
+  check("o editor aberto nao alcanca a vitrine", cartao.right <= coluna.left, true);
 
   /* ---------- a fonte do par entra nos dois campos ---------- */
   const campos = [...d.querySelectorAll("#editor [contenteditable]")];

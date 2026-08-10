@@ -772,6 +772,66 @@ body {
   color: var(--paper); opacity: .75;
 }
 
+/* ---------- case ----------
+   O botão fica no canto oposto ao da marca, na diagonal: são as duas únicas
+   coisas presas às quinas da tela, e uma em cada ponta não disputa nada. Mesmo
+   vocabulário dos controles do editor — 38px, canto de 10px, o tom dizendo o
+   estado —, porque é o que ele é: um controle, não um enfeite. */
+.case-open {
+  position: fixed; left: 26px; bottom: 26px; z-index: 18;
+  width: 38px; height: 38px; padding: 0;
+  border: 0; border-radius: 10px;
+  background: var(--surface); color: var(--muted);
+  font: inherit; font-size: 15px; line-height: 1;
+  cursor: pointer;
+  transition: background .22s ease, color .22s ease;
+}
+.case-open:hover { background: var(--surface-hover); color: var(--paper); }
+.case-open:focus-visible { outline: 1px solid var(--paper); outline-offset: 2px; }
+
+/* O cartão do modal. Sem respiro interno: o quadro ocupa tudo, e o `overflow`
+   é o que faz o canto arredondado valer para a página lá dentro. */
+.case {
+  width: min(1180px, 92vw);
+  height: min(860px, 88vh);
+  /* Quem centra um `<dialog>` é o `margin: auto` que o navegador traz por
+     padrão — e o reset global (`* { margin: 0 }`) o apaga. Sem esta linha o
+     cartão nasce grudado na quina superior esquerda. */
+  margin: auto;
+  padding: 0; border: 0; border-radius: 22px;
+  background: #0d0d0d;
+  box-shadow: 0 40px 120px rgba(0, 0, 0, .7);
+  overflow: hidden;
+}
+/* O escurecimento do fundo. Vem do navegador, na camada de topo — nenhuma
+   `z-index` do app alcança aqui, então não há o que empilhar contra. */
+.case::backdrop {
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(3px);
+}
+.case[open] { animation: case-in .26s var(--ease-in); }
+@keyframes case-in {
+  from { opacity: 0; transform: translateY(10px) scale(.99); }
+  to { opacity: 1; transform: none; }
+}
+
+.case__frame { display: block; width: 100%; height: 100%; border: 0; }
+
+/* Flutua sobre a página lá dentro, que é escura e rola por baixo dele. O fundo
+   próprio existe para o × não sumir em cima de uma figura clara. */
+.case__close {
+  position: absolute; top: 14px; right: 14px; z-index: 1;
+  width: 34px; height: 34px; padding: 0;
+  border: 0; border-radius: 10px;
+  background: rgba(22, 22, 22, .82); backdrop-filter: blur(6px);
+  color: var(--muted);
+  font: inherit; font-size: 19px; line-height: 1;
+  cursor: pointer;
+  transition: background .22s ease, color .22s ease;
+}
+.case__close:hover { background: #262626; color: var(--paper); }
+.case__close:focus-visible { outline: 1px solid var(--paper); outline-offset: 2px; }
+
 /* ---------- indicador de troca ----------
    Acende no centro a cada conjunto novo de fontes e fica no mínimo 300ms — o
    piso mora em ui/controls.ts, aqui só o desenho. A pastilha existe porque o

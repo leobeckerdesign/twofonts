@@ -1,0 +1,1269 @@
+<title>Como um algoritmo aprende a combinar tipografias</title>
+
+<style>
+  @font-face {
+    font-family: "Geist";
+    font-weight: 300;
+    font-display: block;
+    src: url("/*__GEIST_300__*/") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist";
+    font-weight: 400;
+    font-display: block;
+    src: url("/*__GEIST_400__*/") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist";
+    font-weight: 500;
+    font-display: block;
+    src: url("/*__GEIST_500__*/") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist";
+    font-weight: 700;
+    font-display: block;
+    src: url("/*__GEIST_700__*/") format("woff2");
+  }
+
+  /*
+    Escala em cinza puro, tema escuro único. A hierarquia sai de luminância e
+    peso, nunca de matiz. As cinco cores de categoria existem só dentro do
+    canvas da Fig. 2, onde a cor é dado e não decoração.
+  */
+  :root {
+    --paper: #0d0d0d;
+    --paper-2: #161616;
+    --plate: #080808;
+    --ink: #ededed;
+    --hi: #ffffff;
+    --ink-soft: #9b9b9b;
+    --ink-faint: #636363;
+    --rule: #272727;
+    --rule-strong: #3d3d3d;
+
+    --cat-sans: #6f8cff;
+    --cat-serif: #ff7a5c;
+    --cat-display: #e8b13f;
+    --cat-hand: #3fcfa2;
+    --cat-mono: #b184f5;
+
+    --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+
+    --measure: 62ch;
+    --gutter: 8.5rem;
+
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 17px;
+    line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 2rem 7rem;
+  }
+
+  /* ---------- calha de marcacao ---------- */
+
+  .band {
+    display: grid;
+    grid-template-columns: var(--gutter) minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: start;
+  }
+
+  .mark {
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    line-height: 1.5;
+    padding-top: 0.7rem;
+    position: sticky;
+    top: 1.5rem;
+  }
+
+  .mark b {
+    display: block;
+    font-weight: 700;
+    font-size: 1.55rem;
+    letter-spacing: -0.03em;
+    color: var(--hi);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .col { max-width: var(--measure); }
+
+  /* ---------- cabecalho ---------- */
+
+  header {
+    padding: 5.5rem 0 3.5rem;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.4rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .eyebrow span:first-child { color: var(--hi); }
+
+  h1 {
+    font-weight: 700;
+    font-size: clamp(2.3rem, 6.4vw, 4.5rem);
+    line-height: 1.02;
+    letter-spacing: -0.045em;
+    margin: 0 0 2rem;
+    max-width: 19ch;
+    text-wrap: balance;
+    color: var(--hi);
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--ink-faint);
+  }
+
+  .standfirst {
+    font-size: 1.32rem;
+    line-height: 1.55;
+    max-width: 56ch;
+    font-weight: 300;
+    color: var(--ink-soft);
+    margin: 0;
+    letter-spacing: -0.011em;
+  }
+
+  /* ---------- ficha tecnica ---------- */
+
+  .colophon {
+    margin-top: 3.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .colophon div {
+    background: var(--paper);
+    padding: 1rem 1.1rem 1.15rem;
+  }
+
+  .colophon dt {
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.55rem;
+  }
+
+  .colophon dd {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--hi);
+  }
+
+  .colophon dd small {
+    display: block;
+    font-weight: 400;
+    font-size: 0.66rem;
+    letter-spacing: 0;
+    color: var(--ink-faint);
+    margin-top: 0.5rem;
+    line-height: 1.45;
+  }
+
+  /* ---------- secoes ---------- */
+
+  section {
+    padding: 4.5rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  h2 {
+    font-weight: 700;
+    font-size: clamp(1.5rem, 3vw, 2.05rem);
+    letter-spacing: -0.038em;
+    line-height: 1.16;
+    margin: 0 0 1.5rem;
+    text-wrap: balance;
+    color: var(--hi);
+  }
+
+  p { margin: 0 0 1.25rem; }
+  p:last-child { margin-bottom: 0; }
+
+  .lead { font-size: 1.1rem; color: var(--ink); }
+
+  section p { color: var(--ink-soft); }
+  section p.lead { color: var(--ink); }
+
+  strong {
+    font-weight: 500;
+    color: var(--hi);
+    box-shadow: inset 0 -1px 0 var(--rule-strong);
+  }
+
+  code {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 0.92em;
+    letter-spacing: 0.02em;
+    background: var(--paper-2);
+    color: var(--ink);
+    padding: 0.1em 0.4em;
+    border: 1px solid var(--rule);
+  }
+
+  .aside {
+    border-left: 2px solid var(--rule-strong);
+    padding: 0.15rem 0 0.15rem 1.15rem;
+    margin: 2rem 0;
+    font-size: 0.95rem;
+    color: var(--ink-faint);
+    max-width: 56ch;
+  }
+
+  /* ---------- figuras ---------- */
+
+  figure { margin: 2.75rem 0 0; }
+
+  figcaption {
+    font-size: 0.72rem;
+    line-height: 1.65;
+    color: var(--ink-faint);
+    margin-top: 1rem;
+    max-width: 62ch;
+  }
+
+  figcaption b {
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    margin-right: 0.6rem;
+  }
+
+  .full { grid-column: 1 / -1; }
+
+  /* ---------- folha de contato de glifos ---------- */
+
+  .sheet {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .plate {
+    background: var(--plate);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* as grades sao pretas sobre branco; invertidas viram brancas sobre preto */
+  .plate img {
+    width: 100%;
+    display: block;
+    aspect-ratio: 1;
+    filter: invert(1);
+  }
+
+  .plate span {
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 0.55rem 0.6rem 0.65rem;
+    color: var(--ink-soft);
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    line-height: 1.35;
+  }
+
+  /* ---------- comparacao concorda / discorda ---------- */
+
+  .verdict {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2.75rem;
+  }
+
+  .verdict > div {
+    border: 1px solid var(--rule);
+    background: var(--paper-2);
+  }
+
+  .verdict-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .verdict-head b { color: var(--hi); font-weight: 700; }
+  .verdict-head span { color: var(--ink-faint); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  .verdict-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+  }
+
+  .verdict-pair figure { margin: 0; background: var(--plate); }
+
+  .verdict-pair img {
+    width: 100%;
+    display: block;
+    aspect-ratio: 1;
+    filter: invert(1);
+  }
+
+  .verdict-pair figcaption {
+    margin: 0;
+    padding: 0.5rem 0.6rem 0.6rem;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+
+  .verdict p {
+    padding: 1rem;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- mapa (unico lugar com cor) ---------- */
+
+  .map-shell {
+    border: 1px solid var(--rule-strong);
+    background: var(--plate);
+    position: relative;
+  }
+
+  .map-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.8rem;
+    border-bottom: 1px solid var(--rule);
+    align-items: center;
+    background: var(--paper);
+  }
+
+  .chip {
+    font-family: var(--sans);
+    font-size: 0.64rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.4rem 0.72rem;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .chip:hover { border-color: var(--rule-strong); color: var(--ink); }
+  .chip:focus-visible { outline: 2px solid var(--hi); outline-offset: 2px; }
+
+  .chip i { width: 9px; height: 9px; background: currentColor; display: block; }
+
+  .chip[aria-pressed="true"] { border-color: var(--rule-strong); color: var(--ink); background: var(--paper-2); }
+
+  .chip.sans i { color: var(--cat-sans); }
+  .chip.serif i { color: var(--cat-serif); }
+  .chip.display i { color: var(--cat-display); }
+  .chip.hand i { color: var(--cat-hand); }
+  .chip.mono i { color: var(--cat-mono); }
+
+  .map-count {
+    margin-left: auto;
+    font-size: 0.64rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+  }
+
+  #map { display: block; width: 100%; height: auto; cursor: crosshair; }
+
+  .readout {
+    position: absolute;
+    left: 0.8rem;
+    bottom: 0.8rem;
+    background: var(--paper);
+    border: 1px solid var(--rule-strong);
+    padding: 0.55rem 0.75rem;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    pointer-events: none;
+    max-width: calc(100% - 1.6rem);
+  }
+
+  /* `display: flex` acima venceria o `hidden` da folha do navegador */
+  .readout[hidden] { display: none; }
+
+  .readout img {
+    width: 40px;
+    height: 40px;
+    display: block;
+    border: 1px solid var(--rule);
+    filter: invert(1);
+    flex: none;
+  }
+
+  .readout b {
+    display: block;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: -0.015em;
+    color: var(--hi);
+    margin-bottom: 0.1rem;
+  }
+
+  .readout i {
+    font-style: normal;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.6rem;
+    font-weight: 500;
+  }
+
+  /* ---------- metrica ---------- */
+
+  .metric {
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-2);
+    margin-top: 2.75rem;
+  }
+
+  .metric-top { padding: 1.5rem 1.5rem 1.75rem; border-bottom: 1px solid var(--rule); }
+
+  .slider-row { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+
+  .slider-row label {
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    flex: none;
+  }
+
+  input[type="range"] {
+    flex: 1 1 260px;
+    accent-color: var(--hi);
+    height: 2rem;
+  }
+
+  input[type="range"]:focus-visible { outline: 2px solid var(--hi); outline-offset: 3px; }
+
+  .cvalue {
+    font-weight: 700;
+    font-size: 2rem;
+    letter-spacing: -0.05em;
+    font-variant-numeric: tabular-nums;
+    color: var(--hi);
+    flex: none;
+    min-width: 4.4ch;
+    text-align: right;
+  }
+
+  .formula {
+    font-size: 0.86rem;
+    font-weight: 400;
+    margin-top: 1.5rem;
+    padding: 0.9rem 1rem;
+    background: var(--plate);
+    border: 1px solid var(--rule);
+    overflow-x: auto;
+    white-space: nowrap;
+    color: var(--ink-soft);
+  }
+
+  .formula u {
+    text-decoration: none;
+    color: var(--hi);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bars { display: grid; gap: 0.7rem; margin-top: 1.5rem; }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 12.5ch 1fr 4.5ch;
+    align-items: center;
+    gap: 0.85rem;
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .bar-track {
+    height: 12px;
+    background: var(--plate);
+    border: 1px solid var(--rule);
+    overflow: hidden;
+  }
+
+  /* as duas barras se distinguem por luminancia, nao por cor */
+  .bar-fill {
+    height: 100%;
+    width: 0;
+    background: var(--hi);
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .bar-row:last-child .bar-fill {
+    background: repeating-linear-gradient(
+      135deg,
+      var(--ink-faint) 0 4px,
+      transparent 4px 8px
+    );
+  }
+
+  .bar-row var {
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .metric-out { padding: 1.35rem 1.5rem 1.6rem; }
+
+  .roles {
+    font-size: 0.67rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 1rem;
+  }
+
+  .roles b { color: var(--hi); font-weight: 700; }
+
+  .pair-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .pair-list li {
+    background: var(--paper);
+    padding: 0.72rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+    animation: rise 0.34s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+
+  .pair-list li s { text-decoration: none; color: var(--ink-faint); font-weight: 400; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ---------- travas ---------- */
+
+  .locks {
+    list-style: none;
+    padding: 0;
+    margin: 2.5rem 0 0;
+    display: grid;
+    gap: 1px;
+    background: var(--rule);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .locks li {
+    background: var(--paper);
+    display: grid;
+    grid-template-columns: 7.5ch minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: 1.1rem 0.25rem;
+    align-items: baseline;
+  }
+
+  .locks b {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--hi);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.035em;
+  }
+
+  .locks span { font-size: 0.95rem; color: var(--ink-faint); }
+  .locks span i { font-style: normal; color: var(--ink); font-weight: 500; }
+
+  footer {
+    padding: 4rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--ink-faint);
+  }
+
+  footer b { color: var(--ink); font-weight: 500; }
+  footer a { color: var(--ink); text-underline-offset: 3px; }
+
+  @media (max-width: 860px) {
+    :root { --gutter: 0; }
+    .band { grid-template-columns: 1fr; gap: 0.9rem; }
+    .mark { position: static; padding-top: 0; display: flex; align-items: baseline; gap: 0.8rem; }
+    .mark b { margin-bottom: 0; font-size: 1.1rem; }
+    .wrap { padding: 0 1.15rem 4rem; }
+    header { padding: 3rem 0 2.5rem; }
+    .bar-row { grid-template-columns: 10ch 1fr 4.5ch; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">
+      <span>twofonts</span>
+      <span>Processo</span>
+      <span>Pareamento tipográfico por peso visual</span>
+    </div>
+    <h1>Como uma máquina que nunca estudou tipografia aprende a <em>combinar fontes</em></h1>
+    <p class="standfirst">
+      Renderizei cada fonte do Google Fonts como imagem e deixei um modelo de visão
+      transformar o desenho em números. A métrica separa onde duas fontes concordam
+      de onde discordam. Um controle escolhe qual das duas maximizar.
+    </p>
+
+    <dl class="colophon">
+      <div>
+        <dt>Catálogo</dt>
+        <dd id="s-catalog">0<small>famílias baixadas do Google Fonts</small></dd>
+      </div>
+      <div>
+        <dt>Elegíveis</dt>
+        <dd id="s-eligible">0<small>depois do corte de script e clones</small></dd>
+      </div>
+      <div>
+        <dt>Pares</dt>
+        <dd id="s-pairs">0<small>pré-computados, 10 faixas de contraste</small></dd>
+      </div>
+      <div>
+        <dt>Carga</dt>
+        <dd id="s-kb">0 KB<small>o que o navegador realmente baixa</small></dd>
+      </div>
+    </dl>
+  </header>
+
+  <section class="band">
+    <div class="mark"><b>01</b>A letra vira imagem</div>
+    <div class="col">
+      <h2>Um computador não lê uma fonte. Ele olha.</h2>
+      <p class="lead">
+        O primeiro problema é que tipografia não é dado. Nome de família, classificação,
+        peso declarado: nada disso descreve o desenho. Duas fontes marcadas como
+        <code>sans-serif 400</code> podem não ter nada em comum.
+      </p>
+      <p>
+        Então cada peso de cada família é renderizado como uma imagem de 224 por 224
+        pixels, preto sobre branco, com duas linhas de letras: <code>aeg</code> e
+        <code>nRQ</code>. A escolha não é aleatória. São as letras que mais denunciam
+        um desenho: a altura-x e o bojo no <strong>a</strong>, o corte do
+        <strong>e</strong>, o descendente do <strong>g</strong>, a junção do
+        <strong>n</strong>, a caixa alta do <strong>R</strong> e a cauda do
+        <strong>Q</strong>, que é praticamente uma assinatura.
+      </p>
+      <div class="aside">
+        Peso entra como fonte separada. O bold e o light da mesma família viram duas
+        imagens, dois pontos, duas identidades. Se a família fosse tratada como uma
+        média só, o peso visual se perderia justamente na etapa que existe para medi-lo.
+      </div>
+    </div>
+
+    <figure class="full">
+      <div class="sheet" id="sheet"></div>
+      <figcaption>
+        <b>Fig. 1</b>Oito das 5.669 grades geradas pelo pipeline. É exatamente isto
+        que o modelo recebe: nenhum nome, nenhuma categoria, nenhum metadado. Só a forma.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section class="band">
+    <div class="mark"><b>02</b>A imagem vira número</div>
+    <div class="col">
+      <h2>DINOv2 nunca viu um manual de tipografia.</h2>
+      <p class="lead">
+        As imagens passam por um modelo de visão treinado em fotografias do mundo, sem
+        nenhum ajuste para tipografia e sem treino adicional. Ele não sabe o que é uma
+        serifa. Ele só sabe descrever formas.
+      </p>
+      <p>
+        Cada grade sai de lá como 384 números, e uma redução leva isso a 200. Esse vetor
+        é a fonte, do ponto de vista da máquina. E a parte interessante é que, mesmo sem
+        nunca ter ouvido a palavra <em>grotesca</em>, ele agrupa as grotescas.
+      </p>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="mark"><b>03</b>O espaço</div>
+    <div class="col">
+      <h2>1.221 fontes, organizadas por ninguém.</h2>
+      <p class="lead">
+        Cada fonte agora é um ponto num espaço de 200 dimensões. Achatado em duas para
+        caber na tela, ele vira este mapa. As cores foram adicionadas depois, só para
+        conferência: o modelo nunca soube a que categoria cada fonte pertence.
+      </p>
+      <p>
+        Mesmo assim as manuscritas se juntam num canto, as monoespaçadas formam um
+        bolsão, e as display se espalham pelas bordas porque display é exatamente isso,
+        a categoria das fontes que não se parecem com nenhuma outra.
+      </p>
+    </div>
+
+    <figure class="full">
+      <div class="map-shell">
+        <div class="map-bar" id="chips"></div>
+        <canvas id="map" width="1600" height="900" role="img"
+                aria-label="Mapa de 1.221 famílias tipográficas projetadas em duas dimensões"></canvas>
+        <div class="readout" id="readout" hidden></div>
+      </div>
+      <figcaption>
+        <b>Fig. 2</b>Passe o cursor sobre qualquer ponto. As miniaturas marcam a fonte
+        mais conhecida de cada região do mapa. Clique nas categorias para isolar. É a
+        única peça da página com cor, porque aqui a cor carrega informação.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section class="band">
+    <div class="mark"><b>04</b>A métrica</div>
+    <div class="col">
+      <h2>Discordar não é o contrário de concordar.</h2>
+      <p class="lead">
+        Aqui está a virada do projeto. Medir semelhança entre dois vetores é trivial:
+        multiplica um pelo outro, soma tudo, sai um número. Parecido ou não.
+      </p>
+      <p>
+        Só que essa soma joga fora uma informação. Ao multiplicar dimensão por dimensão,
+        alguns resultados saem positivos, onde as duas formas <strong>concordam</strong>,
+        e outros saem negativos, onde elas <strong>discordam</strong>. Somar tudo mistura
+        as duas pilhas. Então o algoritmo não soma: ele separa.
+      </p>
+      <p>
+        O controle de contraste é literalmente o peso entre as duas pilhas. E a
+        consequência é o que interessa: um par de contraste máximo não é um par
+        aleatório. Ele foi escolhido por discordar muito, que é coisa bem diferente
+        de concordar pouco. <strong>Brigar bem é uma qualidade mensurável.</strong>
+      </p>
+    </div>
+
+    <div class="verdict full" id="verdict"></div>
+
+    <div class="metric full">
+      <div class="metric-top">
+        <div class="slider-row">
+          <label for="c">Contraste</label>
+          <input type="range" id="c" min="0" max="9" value="0" step="1" />
+          <div class="cvalue" id="cval">0.00</div>
+        </div>
+
+        <div class="formula">
+          score = <u id="f-a">1.00</u> × concordância + <u id="f-b">0.00</u> × discordância
+        </div>
+
+        <div class="bars">
+          <div class="bar-row">
+            <span>Concordância</span>
+            <div class="bar-track"><div class="bar-fill" id="bar-a"></div></div>
+            <var id="v-a">100%</var>
+          </div>
+          <div class="bar-row">
+            <span>Discordância</span>
+            <div class="bar-track"><div class="bar-fill" id="bar-b"></div></div>
+            <var id="v-b">0%</var>
+          </div>
+        </div>
+      </div>
+
+      <div class="metric-out">
+        <div class="roles" id="roles"></div>
+        <ul class="pair-list" id="pairs"></ul>
+      </div>
+    </div>
+
+    <figcaption class="full">
+      <b>Fig. 3</b>Os pares são reais, lidos do arquivo que o site carrega. Cada faixa
+      guarda 400 pares; aqui aparecem os seis mais bem pontuados de cada uma.
+    </figcaption>
+  </section>
+
+  <section class="band">
+    <div class="mark"><b>05</b>A curadoria</div>
+    <div class="col">
+      <h2>A fórmula levou uma tarde. As exceções levaram o resto.</h2>
+      <p class="lead">
+        Solta, a métrica entrega lixo convincente. Pedir harmonia máxima faz o
+        algoritmo procurar clones: famílias-irmãs feitas para outro alfabeto têm o
+        latino idêntico e cravam similaridade 1,0000. Tecnicamente perfeito, e um par
+        que não existe.
+      </p>
+      <p>
+        Cada trava abaixo é uma decisão de designer transformada em número. É aqui que
+        mora o projeto, não na fórmula.
+      </p>
+      <ul class="locks">
+        <li>
+          <b>0,965</b>
+          <span>Teto de semelhança. Passa acima de <i>Inter + Figtree</i>, que são
+            legitimamente parecidas em 0,95, e abaixo dos clones.</span>
+        </li>
+        <li>
+          <b>0,80</b>
+          <span>Mesmo primeiro nome só reprova se também for parecida. Assim
+            <i>Roboto + Roboto Slab</i> sobrevive, porque parear superfamília é
+            técnica legítima, não preguiça.</span>
+        </li>
+        <li>
+          <b>0,12</b>
+          <span>Peso do viés de popularidade. Baixo de propósito: corrige a tendência
+            do catálogo sem sequestrar a métrica.</span>
+        </li>
+        <li>
+          <b>4×</b>
+          <span>Limite de aparições por família. Sem ele, uma fonte carismática come
+            a lista inteira.</span>
+        </li>
+        <li>
+          <b>4,5:1</b>
+          <span>Contraste mínimo de leitura. Vira uma faixa de luminância que o fundo
+            animado recebe e não consegue furar, então a regra deixou de ser revisão
+            e virou impossibilidade.</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="band">
+    <div class="mark">Colofão</div>
+    <div class="col">
+      <p>
+        Composta em <b>Geist</b>, uma das 1.223 famílias que o próprio algoritmo pareia.
+        A página inteira é acromática de propósito: a única cor está no mapa da Fig. 2,
+        onde ela codifica categoria e portanto é dado, não enfeite.
+      </p>
+      <p>
+        Método de embeddings e métrica de pareamento derivados de
+        <a href="https://github.com/Jack000/fontjoy">Jack000/fontjoy</a> (MIT).
+        Extração com DINOv2 ViT-S/14. Projeção do mapa com UMAP, calculada a partir dos
+        mesmos vetores de 200 dimensões que alimentam o pareamento. As duas famílias de
+        diferença entre as elegíveis e as plotadas não têm peso regular no catálogo.
+      </p>
+    </div>
+  </footer>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+
+<script>
+  (() => {
+    const DATA = JSON.parse(document.getElementById("data").textContent);
+    const { space, buckets, glyphs, anchors, showcase, stats } = DATA;
+
+    const nf = new Intl.NumberFormat("pt-BR");
+
+    // ---------- ficha tecnica ----------
+    const setStat = (id, value) => {
+      const el = document.getElementById(id);
+      const small = el.querySelector("small");
+      el.textContent = value;
+      if (small) el.appendChild(small);
+    };
+    setStat("s-catalog", nf.format(stats.catalog));
+    setStat("s-eligible", nf.format(stats.eligible));
+    setStat("s-pairs", nf.format(stats.bands * stats.perBand));
+    setStat("s-kb", stats.payloadKb + " KB");
+
+    // ---------- folha de contato ----------
+    const sheet = document.getElementById("sheet");
+    for (const fam of showcase) {
+      if (!glyphs[fam]) continue;
+      const cell = document.createElement("div");
+      cell.className = "plate";
+      const img = document.createElement("img");
+      img.src = glyphs[fam];
+      img.alt = "Grade de glifos de " + fam;
+      const cap = document.createElement("span");
+      cap.textContent = fam;
+      cell.append(img, cap);
+      sheet.appendChild(cell);
+    }
+
+    // ---------- concorda / discorda ----------
+    const VERDICTS = [
+      {
+        title: "Concordam",
+        c: "contraste 0.00",
+        pair: ["Figtree", "Google Sans"],
+        note: "Mesma altura-x, mesma tensão nos terminais, mesmo esqueleto. A soma positiva é alta, e num contraste baixo é isso que a métrica premia.",
+      },
+      {
+        title: "Discordam",
+        c: "contraste 1.00",
+        pair: ["Azeret Mono", "Bitter"],
+        note: "Largura fixa contra largura variável, terminal reto contra serifa pesada. Discordam em quase toda dimensão, e é exatamente por isso que sobem no topo do ranking.",
+      },
+    ];
+
+    const verdict = document.getElementById("verdict");
+    for (const v of VERDICTS) {
+      const box = document.createElement("div");
+
+      const head = document.createElement("div");
+      head.className = "verdict-head";
+      const b = document.createElement("b");
+      b.textContent = v.title;
+      const s = document.createElement("span");
+      s.textContent = v.c;
+      head.append(b, s);
+
+      const grid = document.createElement("div");
+      grid.className = "verdict-pair";
+      for (const fam of v.pair) {
+        const fig = document.createElement("figure");
+        if (glyphs[fam]) {
+          const img = document.createElement("img");
+          img.src = glyphs[fam];
+          img.alt = "Grade de glifos de " + fam;
+          fig.appendChild(img);
+        }
+        const cap = document.createElement("figcaption");
+        cap.textContent = fam;
+        fig.appendChild(cap);
+        grid.appendChild(fig);
+      }
+
+      const note = document.createElement("p");
+      note.textContent = v.note;
+
+      box.append(head, grid, note);
+      verdict.appendChild(box);
+    }
+
+    // ---------- mapa: a unica peca com cor ----------
+    const CATS = [
+      { key: "Sans Serif", label: "Sans", cls: "sans", varName: "--cat-sans" },
+      { key: "Serif", label: "Serif", cls: "serif", varName: "--cat-serif" },
+      { key: "Display", label: "Display", cls: "display", varName: "--cat-display" },
+      { key: "Handwriting", label: "Manuscrita", cls: "hand", varName: "--cat-hand" },
+      { key: "Monospace", label: "Mono", cls: "mono", varName: "--cat-mono" },
+    ];
+
+    const active = new Set(CATS.map((c) => c.key));
+    const chips = document.getElementById("chips");
+    const countEl = document.createElement("div");
+    countEl.className = "map-count";
+
+    for (const cat of CATS) {
+      const btn = document.createElement("button");
+      btn.className = "chip " + cat.cls;
+      btn.type = "button";
+      btn.setAttribute("aria-pressed", "true");
+      const swatch = document.createElement("i");
+      btn.append(swatch, document.createTextNode(cat.label));
+      btn.addEventListener("click", () => {
+        if (active.has(cat.key)) active.delete(cat.key);
+        else active.add(cat.key);
+        if (active.size === 0) CATS.forEach((c) => active.add(c.key));
+        for (const [i, c] of CATS.entries()) {
+          chips.children[i].setAttribute("aria-pressed", String(active.has(c.key)));
+        }
+        draw();
+      });
+      chips.appendChild(btn);
+    }
+    chips.appendChild(countEl);
+
+    const canvas = document.getElementById("map");
+    const ctx = canvas.getContext("2d");
+    const readout = document.getElementById("readout");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const PAD = 46;
+
+    const cssVar = (name) =>
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+    const colorOf = (cat) => {
+      const found = CATS.find((c) => c.key === cat);
+      return cssVar(found ? found.varName : "--ink-faint");
+    };
+
+    const px = (p) => [PAD + p.x * (W - PAD * 2), PAD + (1 - p.y) * (H - PAD * 2)];
+
+    const thumbs = new Map();
+    for (const fam of anchors) {
+      if (!glyphs[fam]) continue;
+      const img = new Image();
+      img.onload = draw;
+      img.src = glyphs[fam];
+      thumbs.set(fam, img);
+    }
+
+    let hovered = null;
+    let reveal = 0;
+
+    function draw() {
+      const plate = cssVar("--plate");
+      const rule = cssVar("--rule");
+      const ink = cssVar("--ink");
+      const faint = cssVar("--ink-faint");
+
+      ctx.fillStyle = plate;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = rule;
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 6; i++) {
+        const x = PAD + (i / 6) * (W - PAD * 2);
+        const y = PAD + (i / 6) * (H - PAD * 2);
+        ctx.beginPath();
+        ctx.moveTo(x, PAD);
+        ctx.lineTo(x, H - PAD);
+        ctx.moveTo(PAD, y);
+        ctx.lineTo(W - PAD, y);
+        ctx.stroke();
+      }
+
+      let shown = 0;
+      for (const p of space) {
+        if (!active.has(p.c)) continue;
+        shown++;
+        const [x, y] = px(p);
+        if (x > PAD + reveal * (W - PAD * 2)) continue;
+        ctx.fillStyle = colorOf(p.c);
+        ctx.globalAlpha = p === hovered ? 1 : 0.66;
+        ctx.beginPath();
+        ctx.arc(x, y, p === hovered ? 8 : 3.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      if (reveal >= 0.999) {
+        // miniaturas ja desenhadas, para nao empilhar rotulo sobre rotulo
+        const placed = [];
+        for (const [fam, img] of thumbs) {
+          const p = space.find((s) => s.f === fam);
+          if (!p || !active.has(p.c) || !img.complete) continue;
+          const [x, y] = px(p);
+          const S = 56;
+          if (placed.some(([px_, py_]) => Math.abs(px_ - x) < 150 && Math.abs(py_ - y) < 96)) continue;
+          placed.push([x, y]);
+          ctx.save();
+          ctx.filter = "invert(1)";
+          ctx.drawImage(img, x + 10, y - S - 10, S, S);
+          ctx.restore();
+          ctx.strokeStyle = faint;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + 10.5, y - S - 9.5, S, S);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + 10, y - 10);
+          ctx.stroke();
+
+          ctx.fillStyle = ink;
+          ctx.font = '500 13px Geist, system-ui, sans-serif';
+          ctx.fillText(fam, x + 10, y + 14);
+        }
+      }
+
+      countEl.textContent = nf.format(shown) + " de " + nf.format(space.length);
+    }
+
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      reveal = 1;
+      draw();
+    } else {
+      const t0 = performance.now();
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / 1100);
+        reveal = 1 - Math.pow(1 - k, 3);
+        draw();
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    // redesenha quando as faces embutidas terminam de carregar
+    if (document.fonts) document.fonts.ready.then(draw);
+
+    canvas.addEventListener("pointermove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = ((e.clientX - rect.left) / rect.width) * W;
+      const my = ((e.clientY - rect.top) / rect.height) * H;
+
+      let best = null;
+      let bestD = 26 * 26;
+      for (const p of space) {
+        if (!active.has(p.c)) continue;
+        const [x, y] = px(p);
+        const d = (x - mx) ** 2 + (y - my) ** 2;
+        if (d < bestD) {
+          bestD = d;
+          best = p;
+        }
+      }
+      if (best === hovered) return;
+      hovered = best;
+      draw();
+
+      if (!best) {
+        readout.hidden = true;
+        return;
+      }
+      const cat = CATS.find((c) => c.key === best.c);
+      readout.innerHTML = "";
+      if (glyphs[best.f]) {
+        const img = document.createElement("img");
+        img.src = glyphs[best.f];
+        img.alt = "";
+        readout.appendChild(img);
+      }
+      const box = document.createElement("div");
+      const b = document.createElement("b");
+      b.textContent = best.f;
+      const i = document.createElement("i");
+      i.textContent = cat ? cat.label : best.c;
+      box.append(b, i);
+      readout.appendChild(box);
+      readout.hidden = false;
+    });
+
+    canvas.addEventListener("pointerleave", () => {
+      hovered = null;
+      readout.hidden = true;
+      draw();
+    });
+
+    // ---------- metrica ----------
+    const slider = document.getElementById("c");
+    const cval = document.getElementById("cval");
+    const fa = document.getElementById("f-a");
+    const fb = document.getElementById("f-b");
+    const barA = document.getElementById("bar-a");
+    const barB = document.getElementById("bar-b");
+    const vA = document.getElementById("v-a");
+    const vB = document.getElementById("v-b");
+    const rolesEl = document.getElementById("roles");
+    const pairsEl = document.getElementById("pairs");
+
+    const ROLE_PT = { bold: "forte", regular: "normal", light: "leve" };
+
+    function renderMetric() {
+      const b = buckets[Number(slider.value)];
+      const c = b.c;
+
+      cval.textContent = c.toFixed(2);
+      fa.textContent = (1 - c).toFixed(2);
+      fb.textContent = c.toFixed(2);
+      barA.style.width = (1 - c) * 100 + "%";
+      barB.style.width = c * 100 + "%";
+      vA.textContent = Math.round((1 - c) * 100) + "%";
+      vB.textContent = Math.round(c * 100) + "%";
+
+      rolesEl.textContent = "";
+      const parts = [
+        "Faixa " + c.toFixed(3) + " · título ",
+        null,
+        " · texto ",
+        null,
+        " · " + nf.format(b.n) + " pares nesta faixa",
+      ];
+      const roleA = document.createElement("b");
+      roleA.textContent = ROLE_PT[b.roles[0]];
+      const roleB = document.createElement("b");
+      roleB.textContent = ROLE_PT[b.roles[1]];
+      parts[1] = roleA;
+      parts[3] = roleB;
+      for (const p of parts) {
+        rolesEl.append(typeof p === "string" ? document.createTextNode(p) : p);
+      }
+
+      pairsEl.innerHTML = "";
+      b.sample.slice(0, 6).forEach(([x, y], i) => {
+        const li = document.createElement("li");
+        li.style.animationDelay = i * 32 + "ms";
+        const s = document.createElement("s");
+        s.textContent = " + ";
+        li.append(document.createTextNode(x), s, document.createTextNode(y));
+        pairsEl.appendChild(li);
+      });
+    }
+
+    slider.addEventListener("input", renderMetric);
+    renderMetric();
+  })();
+</script>

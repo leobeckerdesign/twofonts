@@ -1,3 +1,5 @@
+import { modalAberto } from "./case";
+
 interface Handlers {
   onGenerate: () => void;
   onContrast: (value: number) => void;
@@ -178,6 +180,8 @@ export class Controls {
     addEventListener("keydown", (ev) => {
       const target = ev.target as HTMLElement | null;
       if (ev.code !== "Space" || target?.isContentEditable) return;
+      // Com o case aberto, sortear por trás do modal.
+      if (modalAberto()) return;
       // Espaço é o atalho de sortear, mas é TAMBÉM como o teclado aciona um
       // botão em foco. Sem esta saída, escolher um peso no editor pelo teclado
       // trocava o par no mesmo gesto — e o painel media outra fonte. Vale para

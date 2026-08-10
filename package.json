@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node docs/case/build.mjs && vite build",
+    "case": "node docs/case/build.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "probe": "node scripts/probe.mjs",

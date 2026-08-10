@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><title>sonda do case</title></head>
+<body>
+<pre id="out" style="position:relative;z-index:1;background:#fff">rodando</pre>
+<script type="module">
+/**
+ * Sonda do modal do case.
+ *
+ * Um modal é onde as regressões silenciosas moram: o Esc que para de fechar, o
+ * clique fora que fecha quando não devia, o teclado que vaza para os atalhos do
+ * app e troca as fontes por trás da leitura. Nada disso aparece em teste
+ * unitário — depende de `<dialog>` de verdade, com camada de topo e inércia.
+ *
+ * A carga do quadro também é cobrada aqui: são 294KB, e ninguém deve pagar por
+ * eles sem abrir a página.
+ */
+const out = document.getElementById("out");
+const L = [];
+const say = (s) => { L.push(s); out.textContent = L.join("\n"); };
+let falhas = 0;
+const check = (nome, valor, esperado) => {
+  const ok = valor === esperado;
+  if (!ok) falhas++;
+  say(`${ok ? "  ok " : "FALHA"} ${nome.padEnd(46)} ${ok ? "" : `${valor}   esperado: ${esperado}`}`);
+};
+
+try {
+  const f = document.createElement("iframe");
+  f.style.cssText = "width:1440px;height:820px;border:0;position:fixed;left:0;top:0;z-index:0";
+  f.src = "/?a=Bitter&b=Barlow&c=0.5";
+  document.body.appendChild(f);
+  await new Promise((r) => { f.onload = r; });
+  const d = f.contentDocument;
+  const w = f.contentWindow;
+  await d.fonts.ready;
+  for (let i = 0; i < 120 && !d.querySelector(".chip"); i++) await new Promise((r) => setTimeout(r, 100));
+  const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
+  await pausa(1500);
+
+  const botao = d.getElementById("case-open");
+  const modal = d.getElementById("case");
+  const quadro = d.getElementById("case-frame");
+  const parNaUrl = () => new URL(w.location.href).searchParams.get("a");
+
+  say("ESTRUTURA");
+  check("o botao existe", Boolean(botao), true);
+  // Canto INFERIOR esquerdo: a marca ocupa o superior, e as duas são as únicas
+  // coisas presas às quinas.
+  const r = botao.getBoundingClientRect();
+  check("no canto inferior esquerdo",
+    r.left < 60 && r.bottom > w.innerHeight - 80, true);
+  check("e um <dialog> de verdade", modal.tagName, "DIALOG");
+  check("que nasce fechado", modal.open, false);
+  // 294KB que ninguém paga antes de pedir.
+  check("o quadro nasce sem src", quadro.getAttribute("src"), null);
+
+  say("\nABRIR");
+  botao.click();
+  await pausa(400);
+  check("o clique abre", modal.open, true);
+  check("   e so entao o quadro busca a pagina", quadro.getAttribute("src"), "/espaco-tipografico.html");
+  // `showModal` põe o modal na camada de topo; o foco tem de estar lá dentro,
+  // senão o Tab passeia pela página inerte atrás dele.
+  check("o foco esta dentro do modal", modal.contains(d.activeElement), true);
+
+  say("\nO TECLADO NAO VAZA");
+  const antes = parNaUrl();
+  w.dispatchEvent(new w.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+  w.dispatchEvent(new w.KeyboardEvent("keydown", { code: "Space", key: " ", bubbles: true }));
+  await pausa(700);
+  check("seta e espaco nao trocam o par atras", parNaUrl(), antes);
+
+  say("\nFECHAR");
+  // Clique DENTRO do cartão não fecha: quem lê a página clica nela o tempo todo.
+  const cartao = modal.getBoundingClientRect();
+  const clique = (x, y) => modal.dispatchEvent(new w.PointerEvent("click", {
+    bubbles: true, cancelable: true, clientX: x, clientY: y,
+  }));
+  clique(cartao.left + cartao.width / 2, cartao.top + cartao.height / 2);
+  await pausa(300);
+  check("clique dentro NAO fecha", modal.open, true);
+
+  // O clique no escuro chega com o próprio <dialog> como alvo — o ::backdrop
+  // não é elemento. Quem separa dentro de fora é a geometria.
+  clique(cartao.left / 2, cartao.top / 2);
+  await pausa(300);
+  check("clique no escuro fecha", modal.open, false);
+  // O `<dialog>` devolve o foco a quem abriu; sem isso o Tab recomeça do topo.
+  check("o foco volta para o botao", d.activeElement, botao);
+
+  botao.click();
+  await pausa(300);
+  check("reabre", modal.open, true);
+  d.getElementById("case-close").click();
+  await pausa(300);
+  check("o botao de fechar fecha", modal.open, false);
+
+  // O Esc NÃO é testado aqui, e não por esquecimento: fechar no Esc é conduta
+  // interna do `<dialog>`, presa à tecla de VERDADE — um `KeyboardEvent`
+  // fabricado por script não a aciona, e a sonda só sabe fabricar eventos. O
+  // que poderia quebrar do nosso lado seria alguém engolir o Escape antes do
+  // navegador; os dois que o escutam (o painel do editor e a lista suspensa
+  // dele) só o fazem dentro de `#editor`, que fica inerte com o modal aberto.
+
+  say(`\nTOTAL ${falhas}`);
+} catch (err) {
+  say(`ERRO: ${err && err.stack ? err.stack : String(err)}`);
+  say("TOTAL 99");
+}
+</script>
+</body>
+</html>

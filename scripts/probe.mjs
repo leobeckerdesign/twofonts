@@ -94,6 +94,14 @@ const SONDAS = [
     detalhe: (l) => l.startsWith("FALHA"),
     veredito: (n) => `${n} verificação(ões) do editor falharam.`,
   },
+  {
+    nome: "case",
+    page: "scripts/case-probe.html",
+    viewports: ["1440,820"],
+    unidade: "verificações falhas",
+    detalhe: (l) => l.startsWith("FALHA"),
+    veredito: (n) => `${n} verificação(ões) do modal do case falharam.`,
+  },
 ];
 
 async function alvoDaPagina(port, url) {
@@ -195,6 +203,6 @@ for (const sonda of SONDAS) {
 
 if (failed > 0) process.exit(1);
 console.log(
-  "\nTudo verde: nada transborda, nada treme, o slider responde, o dock amplia " +
-  "e o editor abre sem levar o campo junto.",
+  "\nTudo verde: nada transborda, nada treme, o slider responde, o dock amplia, " +
+  "o editor abre sem levar o campo junto e o case não deixa o teclado vazar.",
 );

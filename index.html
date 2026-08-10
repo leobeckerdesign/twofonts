@@ -87,6 +87,29 @@
 
   <!-- Troca de par. Fica calado para o leitor de tela: quem anuncia a mudança é
        o #pair-meta, que é `aria-live` e diz os nomes das duas fontes. -->
+  <!-- O case, no canto oposto ao da marca. Abre a página que explica como o
+       pareamento funciona.
+
+       `<dialog>` nativo, e não uma div com `role="dialog"`: `showModal()` traz
+       de graça o escurecimento (`::backdrop`), a trava de foco, o Esc, a camada
+       de topo e a inércia do resto da página — tudo o que teríamos de escrever
+       à mão, e errar.
+
+       A página vive num `<iframe>`: ela é um documento inteiro, com as próprias
+       fontes e o próprio CSS, e o app tem um CSS pesado. O quadro é a fronteira
+       que impede os dois de se contaminarem. O `src` entra só na primeira
+       abertura — são 294KB que ninguém deve pagar sem pedir. -->
+  <button id="case-open" class="case-open" type="button"
+          aria-haspopup="dialog" aria-label="Como o pareamento funciona">?</button>
+
+  <dialog id="case" class="case" aria-label="Como o pareamento funciona">
+    <button id="case-close" class="case__close" type="button" aria-label="Fechar">
+      <span aria-hidden="true">×</span>
+    </button>
+    <iframe id="case-frame" class="case__frame"
+            title="Como o algoritmo pareia tipografias"></iframe>
+  </dialog>
+
   <div id="busy" aria-hidden="true"><span class="busy__ring"></span></div>
 
   <div id="loading" role="status" aria-live="polite">escolhendo o primeiro par…</div>

@@ -5,6 +5,7 @@ import { loadFont, pinFontFamilies, pinUiFont } from "./fonts";
 import { fontByFamily, loadPairs, pairsIn, pickPair, weightRoles } from "./pairs";
 import { assignRoles } from "./roles";
 import type { AppState, FontMeta, PairsData } from "./types";
+import { initCase, modalAberto } from "./ui/case";
 import { CONTRAST_STEPS, Controls, stepToContrast } from "./ui/controls";
 import { Editor } from "./ui/editor";
 import { Shelf } from "./ui/shelf";
@@ -28,6 +29,9 @@ function stateFromUrl(data: PairsData): AppState | null {
 
 async function boot(): Promise<void> {
   initBackground(document.getElementById("bg") as HTMLCanvasElement);
+  // Não depende do catálogo: o botão do case precisa responder mesmo se o
+  // `pairs.json` não chegar — é a página que explica o que o app faz.
+  initCase();
 
   let data: PairsData;
   try {
@@ -50,7 +54,7 @@ async function boot(): Promise<void> {
   // na JANELA, então rolar dentro deles rolaria o campo atrás. A vitrine entrou
   // na lista ao ficar em pé — deitada ela rolava pela posição do ponteiro e não
   // disputava a roda com ninguém; agora a roda é a afordância dela.
-  const field = new Field(fieldRoot, "#editor, #gallery");
+  const field = new Field(fieldRoot, "#editor, #gallery, #case");
   const controls = new Controls();
   const shelf = new Shelf(document.getElementById("shelf")!);
   const editor = new Editor(weightRoles(data, state.contrast));
@@ -178,6 +182,8 @@ async function boot(): Promise<void> {
     // debaixo da amostra que a pessoa estava justamente ajustando.
     if (target?.isContentEditable === true) return;
     if (target?.closest?.("input, [role=slider]")) return;
+    // Com o case aberto, as setas mudariam o par por trás do modal.
+    if (modalAberto()) return;
     if (ev.key === "ArrowLeft") { ev.preventDefault(); move(-1); }
     if (ev.key === "ArrowRight") { ev.preventDefault(); move(1); }
   });

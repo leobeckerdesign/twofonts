@@ -79,8 +79,16 @@ body {
   font-size: 10px; line-height: 13px;
   letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
 }
-#brand { color: var(--paper); letter-spacing: .24em; }
-#brand span { color: var(--muted); }
+/* A marca. Era a palavra "twofonts" composta na fonte da interface; virou o
+   logotipo, e com ele a altura da barra deixou de depender de métrica de fonte
+   nenhuma — o desenho tem proporção fixa (718×239) e a altura é declarada aqui.
+   28px é o dobro da medida do texto que ele substituiu — a marca ganha presença
+   no canto sem chegar perto do par de nomes, que fica do outro lado e continua
+   nos 10px de sempre. A barra cresce para 64px de altura, e o trilho da vitrine
+   (`--dock-top`, 56px) segue folgado abaixo dela porque os dois estão em
+   extremidades opostas. */
+#brand { color: var(--paper); display: flex; }
+#brand svg { display: block; height: 28px; width: auto; }
 /* Os dois nomes trocam por dentro de uma velada, e não à vista: eles têm
    comprimentos diferentes e o bloco é alinhado à direita, então uma troca crua
    faz os dois saltarem de lugar. Quem conta o tempo é ui/controls.ts — o texto
@@ -818,6 +826,9 @@ body {
 
 @media (max-width: 720px) {
   #pair-meta { font-size: 9px; }
+  /* 28px de marca numa tela de 430 é uma barra de 64px de altura só para o
+     canto: proporcionalmente, o dobro da tela grande não é o dobro da pequena. */
+  #brand svg { height: 22px; }
   /* Um terço de 390px não é painel, é fresta. */
   #editor { width: min(86vw, 420px); max-height: calc(100vh - 124px); }
   .editor__body { padding: 22px 16px 24px 20px; gap: 18px; }

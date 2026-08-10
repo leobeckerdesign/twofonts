@@ -1,5 +1,40 @@
 export const failedFonts = new Set<string>();
 
+/**
+ * A fonte da INTERFACE, presa fora do alcance da troca de fontes.
+ *
+ * Ela vinha de um `@font-face` no CSS, e por isso compartilhava o destino das
+ * famílias do Google: cada `<link>` que entra (ou que `enforceFontBudget`
+ * remove) faz o Chrome reconstruir o seletor de fontes do documento, e nessa
+ * reconstrução a face do CSS volta por um quadro ao estado "carregando".
+ * Medido: durante uma troca de corte, `document.fonts.check` respondia FALSE
+ * para a Plex Mono onze vezes ao longo de cinco segundos, e a cada vez a
+ * interface pintava na reserva — a marca ia de 67,2×13 para 63,2×12, o par de
+ * nomes no topo pulava de lugar e o valor dentro do trilho estremecia. O texto
+ * é estático; o que se mexia era a fonte por baixo dele.
+ *
+ * Uma face registrada por JavaScript não mora em folha nenhuma: o estado dela
+ * pertence ao objeto `FontFace`, e reconstruir o seletor não a devolve para
+ * "carregando". Ela entra no documento só DEPOIS de carregada, então também não
+ * existe período de troca — a interface pinta na reserva uma vez, no primeiro
+ * quadro, e nunca mais.
+ *
+ * Falhando, o CSS cai na pilha de reserva (`ui-monospace`, `monospace`), que é
+ * exatamente o que acontecia antes quando o arquivo não chegava.
+ */
+export function pinUiFont(): void {
+  if (typeof FontFace !== "function") return;
+  const face = new FontFace(
+    "Plex Mono UI",
+    'url("/fonts/ibm-plex-mono-latin.woff") format("woff")',
+    { weight: "400 500" },
+  );
+  void face.load().then(
+    (ready) => document.fonts.add(ready),
+    () => undefined,
+  );
+}
+
 const readyFamilies = new Set<string>();
 const readyFaces = new Map<string, string>();
 const failedFaces = new Map<string, { family: string; retryAt: number }>();

@@ -1,7 +1,7 @@
 import "./styles.css";
 import { initBackground } from "./background";
 import { Field } from "./field";
-import { loadFont, pinFontFamilies } from "./fonts";
+import { loadFont, pinFontFamilies, pinUiFont } from "./fonts";
 import { fontByFamily, loadPairs, pairsIn, pickPair, weightRoles } from "./pairs";
 import { assignRoles } from "./roles";
 import type { AppState, FontMeta, PairsData } from "./types";
@@ -207,4 +207,7 @@ async function boot(): Promise<void> {
   loading.classList.add("is-done");
 }
 
+// Antes do `boot`, e fora dele: a fonte da interface não depende de catálogo
+// nenhum, e é o primeiro texto que aparece na tela.
+pinUiFont();
 void boot();

@@ -49,6 +49,18 @@ const BUSY_MAX_MS = 4_000;
  */
 const BUSY_MIN_MS = 300;
 
+/**
+ * Duração da velada dos nomes no topo, em ms. Igual à transição de opacidade
+ * do `#pair-meta` — o texto troca no fundo do vale, com a caixa invisível.
+ *
+ * Existe porque os dois nomes têm comprimentos diferentes: "Cinzel + IM Fell
+ * French Canon SC" e "Baumans + Roboto Condensed" não ocupam a mesma largura, e
+ * o bloco é alinhado à direita — trocar o texto na cara do usuário faz os dois
+ * saltarem de lugar. Velado, o que se vê é a mesma dissolvência que o campo já
+ * faz com os cards: sai, troca, volta.
+ */
+const NAME_FADE_MS = 180;
+
 export const stepToContrast = (step: number): number =>
   Math.min(1, Math.max(0, step / LAST_STEP));
 
@@ -74,8 +86,10 @@ function required<T extends HTMLElement>(id: string): T {
 export class Controls {
   private readonly track = required("contrast");
   private readonly valueLabel = required("contrast-value");
+  private readonly meta = required("pair-meta");
   private readonly nameA = required("name-a");
   private readonly nameB = required("name-b");
+  private readonly reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   private readonly spinner = required("busy");
 
@@ -99,6 +113,8 @@ export class Controls {
    * pedida, só não é mais consultada.
    */
   private dragPointer: number | null = null;
+  private nameSwap: ReturnType<typeof setTimeout> | undefined;
+  private pendingNames: { a: string; b: string } | null = null;
   private onContrast: ((value: number) => void) | null = null;
 
   bind(handlers: Handlers): void {
@@ -174,13 +190,48 @@ export class Controls {
   }
 
   sync(a: string, b: string, contrast: number): void {
-    this.nameA.textContent = a;
-    this.nameB.textContent = b;
+    this.setNames(a, b);
     // Não mexe no trilho enquanto o usuário o arrasta.
     if (this.track.dataset.dragging === undefined) {
       this.step = contrastToStep(contrast);
       this.paint();
     }
+  }
+
+  /**
+   * Troca os nomes por dentro de uma velada, e não à vista.
+   *
+   * Sem movimento na tela não há velada: o texto entra direto. Uma dissolvência
+   * de 180ms com a transição zerada pela preferência do sistema não seria um
+   * efeito, seria só um atraso.
+   *
+   * Trocas encavaladas não reiniciam a velada — a de fora fica de pé e pinta o
+   * ÚLTIMO par pedido. Reiniciando, uma rajada deixaria o topo apagado por todo
+   * o tempo da rajada.
+   */
+  private setNames(a: string, b: string): void {
+    if (this.nameA.textContent === a && this.nameB.textContent === b) return;
+
+    if (this.reduced) {
+      this.nameA.textContent = a;
+      this.nameB.textContent = b;
+      return;
+    }
+
+    this.pendingNames = { a, b };
+    if (this.nameSwap !== undefined) return;
+
+    this.meta.classList.add("is-swapping");
+    this.nameSwap = setTimeout(() => {
+      this.nameSwap = undefined;
+      const next = this.pendingNames;
+      this.pendingNames = null;
+      if (next) {
+        this.nameA.textContent = next.a;
+        this.nameB.textContent = next.b;
+      }
+      this.meta.classList.remove("is-swapping");
+    }, NAME_FADE_MS);
   }
 
   /**

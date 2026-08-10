@@ -1,9 +1,7 @@
-@font-face {
-  font-family: "Plex Mono UI";
-  src: url("/fonts/ibm-plex-mono-latin.woff") format("woff");
-  font-weight: 400 500;
-  font-display: swap;
-}
+/* A face "Plex Mono UI" NÃO se declara aqui — ela é registrada por JavaScript,
+   em `pinUiFont` (fonts.ts), e o porquê está lá: declarada em folha de estilo
+   ela voltava ao estado "carregando" a cada `<link>` de fonte que o app
+   adiciona ou remove, e a interface inteira piscava na fonte de reserva. */
 
 /* Preto, branco e cinza. O laranja saiu: a hierarquia agora é só luminância,
    e quem está em foco é quem está mais claro. */
@@ -70,15 +68,28 @@ body {
 #bg { position: fixed; inset: 0; z-index: 0; }
 
 /* ---------- topo ---------- */
+/* `line-height` em px, e não `normal`. É a mesma regra que os cards da vitrine
+   já seguiam e que o topo nunca teve: `normal` sai das MÉTRICAS da fonte, então
+   qualquer quadro pintado numa fonte de reserva mudava a altura da barra em 1px
+   — e com ela a altura dos dois nomes, que subiam e desciam a cada troca. */
 #topbar {
   position: fixed; inset: 0 0 auto 0; z-index: 20;
   display: flex; justify-content: space-between; align-items: center;
   padding: 18px 26px; pointer-events: none;
-  font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+  font-size: 10px; line-height: 13px;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
 }
 #brand { color: var(--paper); letter-spacing: .24em; }
 #brand span { color: var(--muted); }
-#pair-meta { display: flex; gap: 10px; max-width: 62vw; }
+/* Os dois nomes trocam por dentro de uma velada, e não à vista: eles têm
+   comprimentos diferentes e o bloco é alinhado à direita, então uma troca crua
+   faz os dois saltarem de lugar. Quem conta o tempo é ui/controls.ts — o texto
+   muda no fundo do vale. */
+#pair-meta {
+  display: flex; gap: 10px; max-width: 62vw;
+  transition: opacity .18s ease;
+}
+#pair-meta.is-swapping { opacity: 0; }
 #pair-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #name-a, #name-b { color: var(--paper); }
 

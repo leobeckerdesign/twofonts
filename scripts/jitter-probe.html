@@ -62,6 +62,14 @@ try {
       ["shelf", d.getElementById("shelf")],
       ["stage", d.getElementById("stage")],
       ["dock", dock],
+      // O topo e o valor do trilho. Entraram depois: o Leo viu os dois tremendo
+      // ao soltar o arrasto, e a sonda estava verde porque não olhava para eles.
+      ["topbar", d.getElementById("topbar")],
+      ["pair-meta", d.getElementById("pair-meta")],
+      ["name-a", d.getElementById("name-a")],
+      ["name-b", d.getElementById("name-b")],
+      ["brand", d.getElementById("brand")],
+      ["contrast-value", d.getElementById("contrast-value")],
       // A prateleira se reconstrói, então o chip é resolvido a cada amostra.
       ["chip", d.querySelector(".chip:not(.chip--more)")],
       // O índice entra na chave SEMPRE: os dois rótulos dividem a classe, e sem
@@ -76,15 +84,23 @@ try {
   // caixa — era o crescimento dela que empurrava a barra inteira.
   const soTamanho = new Set(["chip"]);
 
+  // Os nomes do par são medidos só no eixo Y. A LARGURA deles muda de
+  // propósito — "Cinzel" e "IM Fell French Canon SC" não ocupam o mesmo espaço,
+  // e é por isso que a troca acontece por dentro de uma velada. O que não pode
+  // mudar nunca é a altura nem a linha em que eles se apoiam: aí não é conteúdo,
+  // é a fonte da interface piscando para a de reserva.
+  const soEixoY = new Set(["pair-meta", "name-a", "name-b"]);
+
   const vistos = new Map();
   const amostra = () => {
     for (const [nome, el] of alvos()) {
       if (!el) continue;
       const r = el.getBoundingClientRect();
       const tamanho = `w=${r.width.toFixed(1)} h=${r.height.toFixed(1)}`;
-      const chave = soTamanho.has(nome)
-        ? tamanho
-        : `x=${r.x.toFixed(1)} y=${r.y.toFixed(1)} ${tamanho}`;
+      let chave;
+      if (soTamanho.has(nome)) chave = tamanho;
+      else if (soEixoY.has(nome)) chave = `y=${r.y.toFixed(1)} h=${r.height.toFixed(1)}`;
+      else chave = `x=${r.x.toFixed(1)} y=${r.y.toFixed(1)} ${tamanho}`;
       if (!vistos.has(nome)) vistos.set(nome, new Set());
       vistos.get(nome).add(chave);
     }

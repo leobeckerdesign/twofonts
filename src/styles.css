@@ -196,25 +196,32 @@ body {
   position: fixed; z-index: 22;
   /* Altura pelo CONTEÚDO, com teto no espaço livre da janela. Preso em
      `top`+`bottom` o cartão esticava até embaixo mesmo com pouco texto, e
-     deixava de parecer um cartão. O teto era `100vh - topo - altura da barra de
-     baixo`, medida em JavaScript porque a barra mudava de tamanho com o
-     viewport; a barra saiu e a conta virou aritmética de duas constantes. */
-  top: 48px; left: 0;
-  max-height: calc(100vh - 48px - 26px);
+     deixava de parecer um cartão.
+
+     Centrado no eixo vertical, e não ancorado a 48px do topo: a altura é do
+     conteúdo, então ancorado em cima ele crescia só para baixo e a folga
+     sobrava toda no rodapé — o cartão ficava pendurado. No meio, a folga se
+     divide sozinha, e a lombada recolhida cai na altura do olho em vez de perto
+     da barra de marca. */
+  top: 50%; left: 0;
+  max-height: calc(100vh - 96px);
   display: flex; width: var(--editor-w);
   /* Encostado na borda esquerda: só os cantos de fora se arredondam. */
   border-radius: 0 20px 20px 0; overflow: hidden;
   /* A sombra vive no cartão, e não no corpo: `overflow: hidden` recorta o que
      está DENTRO, então uma sombra lá dentro morreria na borda. */
   box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
-  transform: translateX(calc(-100% + var(--rail)));
+  /* Duas transformadas na MESMA declaração: a de abrir e a de centrar. Numa
+     propriedade só, a segunda substituiria a primeira — e o cartão voltaria a
+     começar no topo no instante em que abrisse. */
+  transform: translate(calc(-100% + var(--rail)), -50%);
   transition: transform .34s var(--ease-out);
   will-change: transform;
 }
 /* A transição mora nos DOIS estados de propósito: é assim que a ida ganha uma
    curva e a volta ganha outra, sem uma linha de JavaScript. */
 #editor.is-open {
-  transform: none;
+  transform: translate(0, -50%);
   transition: transform .52s var(--ease-in);
 }
 
@@ -313,10 +320,12 @@ body {
 
 .ed__trigger, .ed__pill {
   height: 38px;
-  /* Ponta redonda de verdade, e não o canto de 12px de antes: com uma linha só
-     de controles a pílula ficou sendo a única forma do painel, e a forma que a
-     referência desenha para ela é o estádio. */
-  border-radius: 999px;
+  /* Canto e não ponta. Chegaram a ser estádio (`999px`), e o efeito foi o
+     contrário do pretendido: totalmente redondos, os três controles viravam
+     comprimidos flutuando, sem relação com o retângulo do cartão que os
+     contém. 10px num controle de 38px arredonda o suficiente para não cortar,
+     e o bastante para o controle continuar lendo como caixa. */
+  border-radius: 10px;
   background: var(--surface);
   transition: background .2s ease;
 }
@@ -358,7 +367,7 @@ body {
 .ed__list {
   position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 3;
   display: flex; flex-direction: column; gap: 2px;
-  padding: 6px; border-radius: 14px;
+  padding: 6px; border-radius: 12px;
   background: var(--surface-hover);
   box-shadow: 0 18px 40px rgba(0, 0, 0, .6);
   /* A abertura é a mesma curva do painel, em escala: sobe 6px e assenta. */
@@ -377,7 +386,7 @@ body {
 }
 
 .ed__opt {
-  padding: 9px 12px; border: 0; border-radius: 10px;
+  padding: 9px 12px; border: 0; border-radius: 8px;
   background: transparent; color: var(--muted);
   font: inherit; font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
   text-align: left; cursor: pointer;
@@ -403,7 +412,7 @@ body {
 
 .ed__pill::before {
   content: ""; position: absolute; inset: 0 auto 0 0;
-  width: var(--pct); border-radius: 999px;
+  width: var(--pct); border-radius: 10px;
   background: #272727; transition: background .2s ease;
 }
 .ed__pill:hover::before, .ed__pill:has(:active)::before { background: var(--surface-active); }
@@ -792,7 +801,7 @@ body {
 @media (max-width: 720px) {
   #pair-meta { font-size: 9px; }
   /* Um terço de 390px não é painel, é fresta. */
-  #editor { width: min(86vw, 420px); top: 62px; max-height: calc(100vh - 62px - 20px); }
+  #editor { width: min(86vw, 420px); max-height: calc(100vh - 124px); }
   .editor__body { padding: 22px 16px 24px 20px; gap: 18px; }
   .ed--title .ed__text, .ed--body .ed__ctls { margin-top: 20px; }
   .ed__ctls { gap: 8px; }

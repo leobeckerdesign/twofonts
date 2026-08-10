@@ -10,11 +10,15 @@ const LAST_STEP = CONTRAST_STEPS - 1;
 const TICKS = CONTRAST_STEPS - 1;
 
 /**
- * Janela de coalescência do slider, em ms.
+ * Janela de coalescência do TECLADO, em ms.
  *
  * Cada passo do corte repinta os 15 cards, remede 42 blocos de texto e
- * reconstrói a prateleira inteira com dezenas de pedidos de fonte. Num arrasto
- * isso acontecia dez vezes, e o que se sentia era a barra travando.
+ * reconstrói a vitrine inteira com dezenas de pedidos de fonte. Segurar a seta
+ * dispararia isso a cada repetição da tecla, e o que se sente é a tela travando.
+ * Um toque isolado aplica na hora; uma rajada aplica uma vez, ao parar.
+ *
+ * O arrasto NÃO passa por aqui — ele espera o dedo sair do trilho, e o porquê
+ * está em `commit`.
  *
  * O relógio é `performance.now`, e não o ticker do GSAP: o ticker DORME quando
  * não há animação ativa — é o que acontece com `prefers-reduced-motion`, que
@@ -81,6 +85,20 @@ export class Controls {
   private busyShownAt = 0;
   private settle: ReturnType<typeof setTimeout> | undefined;
   private lastInput = Number.NEGATIVE_INFINITY;
+  /** O corte de onde o arrasto partiu, para saber se ao soltar houve mudança. */
+  private stepAtGrab = 0;
+  /**
+   * O ponteiro que está arrastando; `null` quando ninguém está.
+   *
+   * Quem decidia isso era `hasPointerCapture`, e a captura não serve de estado:
+   * ela é uma FACILIDADE — faz os eventos continuarem chegando quando o dedo
+   * sai do trilho —, e o navegador pode devolvê-la sozinho (uma janela que
+   * perde o foco, um gesto do sistema por cima). Quando isso acontecia, o
+   * arrasto parava de responder sem soltar nada, e o trilho ficava preso no
+   * meio do gesto. O dono do estado agora é este campo; a captura segue sendo
+   * pedida, só não é mais consultada.
+   */
+  private dragPointer: number | null = null;
   private onContrast: ((value: number) => void) | null = null;
 
   bind(handlers: Handlers): void {
@@ -89,9 +107,14 @@ export class Controls {
     this.paint();
 
     this.track.addEventListener("pointerdown", (ev) => {
-      // Captura para o arrasto sobreviver ao ponteiro sair do trilho.
-      this.track.setPointerCapture(ev.pointerId);
+      // Captura para o arrasto sobreviver ao ponteiro sair do trilho. Num
+      // ponteiro que o navegador não considera ativo ela levanta NotFoundError,
+      // e sem o `try` a exceção derrubaria o resto do gesto — o arrasto morreria
+      // por causa da conveniência que existe para melhorá-lo.
+      try { this.track.setPointerCapture(ev.pointerId); } catch { /* segue sem captura */ }
+      this.dragPointer = ev.pointerId;
       this.track.dataset.dragging = "true";
+      this.stepAtGrab = this.step;
       this.track.focus({ preventScroll: true });
       // Sem isto o arrasto seleciona o texto do valor pelo caminho.
       ev.preventDefault();
@@ -99,13 +122,26 @@ export class Controls {
     });
 
     this.track.addEventListener("pointermove", (ev) => {
-      if (!this.track.hasPointerCapture(ev.pointerId)) return;
+      if (this.dragPointer !== ev.pointerId) return;
       this.commit(this.stepAt(ev.clientX));
     });
 
+    /**
+     * Soltar é o que aplica.
+     *
+     * Vale para o clique também: pressionar move o cursor, soltar troca as
+     * fontes. Um clique isolado leva os dois eventos no mesmo instante, então a
+     * diferença só aparece quando o dedo continua no trilho — que é exatamente
+     * o caso que estávamos consertando.
+     */
     const soltar = (ev: PointerEvent): void => {
+      if (this.dragPointer !== ev.pointerId) return;
       if (this.track.hasPointerCapture(ev.pointerId)) this.track.releasePointerCapture(ev.pointerId);
+      this.dragPointer = null;
       delete this.track.dataset.dragging;
+      if (this.step === this.stepAtGrab) return;
+      this.busy(true);
+      this.onContrast?.(stepToContrast(this.step));
     };
     this.track.addEventListener("pointerup", soltar);
     this.track.addEventListener("pointercancel", soltar);
@@ -192,19 +228,35 @@ export class Controls {
     // PINTA NA HORA. O trabalho pesado espera, o cursor não: com o input nativo
     // o navegador movia o polegar de graça, e aqui o dono do desenho sou eu.
     this.paint();
+
+    /*
+     * Arrastando, para por aqui: o corte só muda quando o dedo sai do trilho.
+     *
+     * Antes o primeiro passo do arrasto aplicava na hora — borda de subida — e
+     * os seguintes coalesciam numa janela de 160ms. Só que 160ms é menos que
+     * uma pausa involuntária da mão: no meio do gesto a janela fechava, o campo
+     * dissolvia, remedia 42 blocos de texto e renascia com fontes novas, e
+     * seguia assim a cada hesitação. O que se via era a tela tremendo enquanto
+     * o cursor ainda estava sendo posicionado — e é impossível escolher um
+     * corte olhando para um layout que se refaz debaixo do dedo.
+     *
+     * Agora o gesto inteiro é só o cursor andando. Solta, e aí sim: esqueleto,
+     * fontes novas, cascata. Uma troca por gesto, sempre.
+     */
+    if (this.track.dataset.dragging !== undefined) return;
+
     this.busy(true);
 
     const now = performance.now();
-    // A janela conta desde o último TOQUE, não desde a última aplicação.
-    // Contando da aplicação, um arrasto contínuo reabria a porta a cada 160ms e
-    // o campo dissolvia e renascia três, quatro vezes seguidas — era esse
-    // estroboscópio que se via ao arrastar.
+    // A janela conta desde o último TOQUE, não desde a última aplicação:
+    // contando da aplicação, uma rajada de setas reabriria a porta a cada 160ms
+    // e o campo renasceria três, quatro vezes seguidas.
     const gestoNovo = now - this.lastInput > SETTLE_MS;
     this.lastInput = now;
 
     clearTimeout(this.settle);
-    // Borda de subida para o clique isolado, que responde na hora. O arrasto
-    // aplica uma vez ao parar — no meio dele só o cursor e o indicador se mexem.
+    // Borda de subida para a tecla isolada, que responde na hora. Uma rajada
+    // aplica uma vez ao parar — no meio dela só o cursor e o indicador se mexem.
     if (gestoNovo) this.onContrast?.(stepToContrast(step));
     else this.settle = setTimeout(() => this.onContrast?.(stepToContrast(this.step)), SETTLE_MS);
   }

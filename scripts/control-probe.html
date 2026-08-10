@@ -143,6 +143,41 @@ try {
   await pausa(1200);
   check("   e o corte do meio chega no app", contrasteNaUrl(), "0.56");
 
+  /**
+   * O ARRASTO NÃO APLICA NADA.
+   *
+   * Enquanto o dedo está no trilho só o cursor anda. O corte trocava a cada
+   * hesitação da mão — 160ms de pausa bastavam para a janela fechar —, e o
+   * campo dissolvia e renascia com fontes novas no meio do gesto. Era a tela
+   * tremendo enquanto se tentava escolher.
+   */
+  say("\nARRASTO");
+  // O corte anterior reconstrói a vitrine inteira; sem esperar, o arrasto
+  // começaria em cima de trabalho ainda em curso e a leitura sairia suja.
+  await pausa(2500);
+  const antesDoArrasto = contrasteNaUrl();
+  // `pointerId: 1` — o do mouse. Com um id inventado, `setPointerCapture`
+  // levanta NotFoundError e o arrasto inteiro vira um gesto que nunca começou.
+  track.dispatchEvent(new w.PointerEvent("pointerdown", {
+    bubbles: true, cancelable: true, pointerId: 1, isPrimary: true,
+    clientX: r.left + r.width * .1, clientY: r.top + r.height / 2,
+  }));
+  // Passos LENTOS de propósito: 260ms é mais que a janela de coalescência de
+  // 160ms, e é justamente a pausa involuntária que fazia o corte escapar.
+  for (const fx of [.3, .55, .89]) {
+    track.dispatchEvent(new w.PointerEvent("pointermove", {
+      bubbles: true, pointerId: 1,
+      clientX: r.left + r.width * fx, clientY: r.top + r.height / 2,
+    }));
+    await pausa(260);
+  }
+  check("o cursor acompanha o dedo", valor.textContent, "9/10");
+  check("   e o corte NAO mudou no meio do gesto", contrasteNaUrl(), antesDoArrasto);
+
+  track.dispatchEvent(new w.PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
+  await pausa(1500);
+  check("ao soltar, o corte chega no app", contrasteNaUrl(), "0.89");
+
   say(`\nTOTAL ${falhas}`);
 } catch (err) {
   say(`ERRO: ${err && err.stack ? err.stack : String(err)}`);

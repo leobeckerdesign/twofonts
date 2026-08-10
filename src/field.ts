@@ -30,6 +30,17 @@ const MIN_FONT_PX = 9;
  * do card ficaria para trás — deixaria de ser proporcional.
  */
 const CONTENT_SCALE = 0.75;
+/**
+ * Raio do canto do card, em px DE TELA — os mesmos dois valores que os cards da
+ * vitrine usam, e na mesma quebra (`MOBILE_BREAKPOINT` é 720, igual à do CSS).
+ *
+ * O valor vive aqui, e não no CSS, porque o campo é o único que sabe por quanto
+ * cada card está sendo escalado; ver o uso em `layout`. O CSS declara o mesmo
+ * número como ponto de partida, para o card já nascer arredondado no primeiro
+ * quadro, antes de a primeira medição acontecer.
+ */
+const CARD_RADIUS = 22;
+const CARD_RADIUS_MOBILE = 18;
 
 /**
  * Largura ÚTIL do elemento. `clientWidth` sozinho ainda inclui o respiro
@@ -285,6 +296,7 @@ export class Field {
     const fw = this.root.clientWidth;
     const room = Math.max(140, fw - this.margin * 2);
     const lanes = this.isMobile ? LANES_MOBILE : LANES;
+    const raio = this.isMobile ? CARD_RADIUS_MOBILE : CARD_RADIUS;
 
     for (const s of this.slots) {
       // O card mantém a largura de projeto; quem cresce é o .zoom. Se não
@@ -292,6 +304,14 @@ export class Field {
       const k = Math.min(this.scale, room / s.layout.w);
       s.card.style.width = `${s.layout.w}px`;
       s.zoom.style.transform = `scale(${k.toFixed(4)})`;
+      // O raio é o ÚNICO valor do card que NÃO acompanha a escala. Tudo o mais
+      // aqui dentro é composição — respiro, corpo, entrelinha — e cresce junto
+      // com ela; o canto arredondado não é composição, é o vocabulário da
+      // interface, o mesmo dos cards da vitrine ao lado. Dividido pela escala,
+      // ele chega à tela sempre com a mesma medida: fixo no CSS, os 22px
+      // virariam 11px no celular (escala 0,51) e 26px em 1920 (escala 1,19), e
+      // a coluna da direita continuaria nos 22 em qualquer uma das duas.
+      s.card.style.borderRadius = `${(raio / k).toFixed(2)}px`;
 
       s.w = s.layout.w * k;
       s.h = (s.card.offsetHeight || 300) * k;

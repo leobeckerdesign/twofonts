@@ -109,7 +109,14 @@ body {
   box-shadow: 0 26px 64px rgba(0, 0, 0, .36);
   display: flex; flex-direction: column;
   will-change: transform;
-  /* Âncora das caixas que saem do fluxo para virar fundo do card. */
+  /* Ponto de partida: o card nasce arredondado no primeiro quadro. O valor de
+     verdade é escrito por field.ts a cada medição, dividido pela escala do
+     campo — o porquê está lá, em `CARD_RADIUS`. */
+  border-radius: 22px;
+  /* Âncora das caixas que saem do fluxo para virar fundo do card. E é o
+     `overflow` que faz o canto valer para o que está DENTRO: a caixa de mídia
+     que sangra até a borda e o shader que ocupa o card inteiro são recortados
+     pelo arredondamento em vez de quadrarem o canto de volta. */
   position: relative; overflow: hidden;
 }
 /* O texto sobe acima de um shader de fundo sem precisar de z-index nele. */

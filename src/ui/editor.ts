@@ -4,14 +4,12 @@ import { esc } from "../render";
 import { assignRoles } from "../roles";
 import type { FontMeta, WeightRole } from "../types";
 import {
-  CASE_MODES,
   clampTo,
   defaultState,
   LIMITS,
   nearestRole,
   rolesOf,
   slotCss,
-  type CaseMode,
   type SlotName,
   type TypesetState,
 } from "./typeset";
@@ -37,28 +35,8 @@ const ROLE_LABEL: Record<WeightRole, string> = {
   bold: "bold",
 };
 
-/**
- * Palavra, e não o par de glifos `Aa AA aa`.
- *
- * Dentro de uma lista suspensa a amostra não funciona: ela aparece por um
- * segundo, fora da composição, e some. O que a lista precisa dizer é o NOME da
- * opção — e três palavras dizem isso sem depender de o olho decifrar o exemplo.
- */
-const CASE_LABEL: Record<CaseMode, string> = {
-  none: "normal",
-  upper: "maiúscula",
-  lower: "minúscula",
-};
-
 const SLOT_LABEL: Record<SlotName, string> = { title: "título", body: "parágrafo" };
 
-/**
- * Uma linha de controle: a lista suspensa e a régua que anda com ela.
- *
- * Eram oito rótulos e doze botões; viraram duas linhas por papel. A lista diz o
- * que escolheu com a própria palavra (`bold`, `maiúscula`) e a régua diz com o
- * número ao lado — nenhum dos dois precisa de legenda em cima.
- */
 /**
  * A lista suspensa, escrita à mão.
  *
@@ -84,22 +62,26 @@ function pick(slot: SlotName, kind: string, label: string): string {
   </div>`;
 }
 
-function row(slot: SlotName, picked: string, pickLabel: string, kind: "size" | "leading", rangeLabel: string, unit: string): string {
+/**
+ * Uma régua. Mesma anatomia do trilho do dock: a pílula inteira é o controle, o
+ * preenchimento cresce da esquerda, o cursor mora na borda dele e o valor fica
+ * por dentro. A diferença é que aqui o `input[type=range]` continua existindo,
+ * invisível, por cima — ele traz teclado, arrasto e ARIA de graça, e o desenho
+ * vem do contêiner.
+ *
+ * Sem rótulo escrito: o que a régua governa está dito no VALOR que ela mostra —
+ * "48px" só pode ser corpo, "1.02" só pode ser entrelinha. Escrever "medida" e
+ * "entrelinha" dentro da pílula custava metade do curso do controle para dizer
+ * o que o número já dizia. O leitor de tela continua ouvindo o nome inteiro,
+ * que vive no `aria-label` do input.
+ */
+function range(slot: SlotName, kind: "size" | "leading", label: string, unit: string): string {
   const limit = LIMITS[slot][kind];
-  // Mesma anatomia do trilho do dock: a pílula inteira é o controle, o
-  // preenchimento cresce da esquerda, o cursor mora na borda dele, e o rótulo e
-  // o valor ficam por dentro. A diferença é que aqui o `input[type=range]`
-  // continua existindo, invisível, por cima — ele traz teclado, arrasto e ARIA
-  // de graça, e o desenho vem do contêiner.
-  return `<div class="ed__row">
-    ${pick(slot, picked, pickLabel)}
-    <div class="ed__pill" data-pill="${kind}">
-      <input class="ed__range" type="range" data-range="${kind}"
-             min="${limit.min}" max="${limit.max}" step="${limit.step}"
-             aria-label="${rangeLabel} do ${SLOT_LABEL[slot]}${unit}" />
-      <span class="ed__cap">${rangeLabel}</span>
-      <b class="ed__value num" data-out="${kind}" aria-hidden="true"></b>
-    </div>
+  return `<div class="ed__pill" data-pill="${kind}">
+    <input class="ed__range" type="range" data-range="${kind}"
+           min="${limit.min}" max="${limit.max}" step="${limit.step}"
+           aria-label="${label} do ${SLOT_LABEL[slot]}${unit}" />
+    <b class="ed__value num" data-out="${kind}" aria-hidden="true"></b>
   </div>`;
 }
 
@@ -113,9 +95,15 @@ function slotMarkup(slot: SlotName, text: string): string {
   const field = `<div class="ed__text" data-text contenteditable="plaintext-only" role="textbox"
          aria-multiline="true" spellcheck="false"
          aria-label="Texto do ${SLOT_LABEL[slot]}">${esc(text)}</div>`;
+  // UMA linha por papel: peso, corpo, entrelinha. Eram duas, e a segunda
+  // carregava a caixa (`Aa AA aa`) ao lado da entrelinha — mas o campo é
+  // editável, e escrever em maiúscula ali é digitar em maiúscula. O controle
+  // gastava uma linha inteira do painel para fazer o que o teclado já faz, e a
+  // altura é justamente o que falta aqui.
   const controls = `<div class="ed__ctls">
-      ${row(slot, "weight", "peso", "size", "medida", " em pixels")}
-      ${row(slot, "caps", "caixa", "leading", "entrelinha", "")}
+      ${pick(slot, "weight", "peso")}
+      ${range(slot, "size", "medida", " em pixels")}
+      ${range(slot, "leading", "entrelinha", "")}
     </div>`;
 
   // Sem título de seção: com os controles do título ACIMA dele e os do
@@ -157,28 +145,13 @@ export class Editor {
     // `inert` tira o painel inteiro da ordem de foco enquanto ele está fechado.
     this.body.inert = true;
     this.bind();
-    this.watchBar();
-    this.paint();
-  }
-
-  /**
-   * A altura real da barra de baixo, publicada em `--bar-h`.
-   *
-   * O cartão termina acima dela, e ela não tem altura fixa: muda com o viewport
-   * (a prateleira encolhe no celular) e com a fonte do chip. Um número chutado
-   * no CSS deixaria o editor por cima da prateleira em metade das telas.
-   */
-  private watchBar(): void {
-    const bar = document.getElementById("bottom");
-    if (!bar) return;
-    const medir = (): void => {
-      document.documentElement.style.setProperty("--bar-h", `${Math.round(bar.offsetHeight)}px`);
-      this.markOverflow();
-    };
-    medir();
-    new ResizeObserver(medir).observe(bar);
-    // A altura livre também muda com a janela, e o corte com ela.
+    // A altura livre muda com a janela, e o corte da dissolvência com ela. Havia
+    // aqui um `ResizeObserver` medindo a barra de baixo para publicar `--bar-h`:
+    // o cartão terminava acima dela e ela não tinha altura fixa. A barra deixou
+    // de existir — o trilho subiu para a coluna da direita —, e o teto do cartão
+    // virou a própria janela, que o CSS sabe medir sozinho.
     addEventListener("resize", () => this.markOverflow());
+    this.paint();
   }
 
   /**
@@ -299,7 +272,6 @@ export class Editor {
       if (!option) return;
       const value = option.dataset.value;
       if (kind === "weight") this.set(slot, { weight: value as WeightRole });
-      if (kind === "caps") this.set(slot, { caps: value as CaseMode });
       abrir(false);
     });
 
@@ -355,10 +327,6 @@ export class Editor {
     // da tela: o teclado continuava escrevendo, invisível. A alça é o lugar
     // natural para o foco cair, porque é o que reabre.
     if (!open && focoDentro) this.handle.focus();
-    // A barra de baixo cede espaço em vez de ficar por baixo: com o painel
-    // aberto sobre ela, os primeiros chips da prateleira — e o par ativo, que é
-    // para onde ela rola sozinha — sumiriam atrás do editor.
-    document.documentElement.classList.toggle("editor-open", open);
     if (open) {
       this.panel.querySelector<HTMLElement>(".ed__text")?.focus();
     }
@@ -404,7 +372,6 @@ export class Editor {
       if (nome) nome.textContent = font?.f ?? "—";
 
       this.paintPick(section, "weight", rolesOf(font), current.weight, (role) => ROLE_LABEL[role as WeightRole]);
-      this.paintPick(section, "caps", [...CASE_MODES], current.caps, (mode) => CASE_LABEL[mode as CaseMode]);
 
       for (const input of section.querySelectorAll<HTMLInputElement>("[data-range]")) {
         const kind = input.dataset.range as "size" | "leading";

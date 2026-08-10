@@ -71,13 +71,12 @@ try {
   // clamp(320px, 33.33vw, 560px): em 1440 o terço vence os dois limites.
   check("abre em ~1/3 da tela", Math.abs(visivel() - terco) <= 8, true);
 
-  // O cartão é modal: não encosta no topo nem na barra de baixo, e a barra
-  // continua inteira. Antes ele ia de borda a borda e EMPURRAVA a barra.
-  const barra = d.getElementById("bottom").getBoundingClientRect();
+  // O cartão é modal: flutua com folga em cima e embaixo. Antes ele ia de borda
+  // a borda e EMPURRAVA a barra de baixo, que nem existe mais — o trilho do
+  // corte subiu para o topo da vitrine.
   const cartao = painel.getBoundingClientRect();
   check("o cartao nao encosta no topo", cartao.top > 0, true);
-  check("o cartao termina acima da barra", Math.round(cartao.bottom) <= Math.round(barra.top), true);
-  check("a barra continua de ponta a ponta", Math.round(barra.left), 0);
+  check("o cartao nao encosta no rodape", cartao.bottom < w.innerHeight, true);
   // A vitrine é do outro lado, e abrir o painel não pode empurrá-la: os dois são
   // fixos, cada um ancorado na sua borda. Enquanto ela ficava embaixo, quem
   // provava isso era a barra; em pé, a prova é a coluna continuar colada na
@@ -158,32 +157,39 @@ try {
     Math.round(Number.parseFloat(getComputedStyle(campos[0]).fontSize)), Number(medida.max));
   check("o card do palco nao se mexeu", d.querySelector(".card .t")?.getAttribute("style") ?? "", antesCard);
 
-  /* ---------- a lista suspensa é nossa, não do sistema ---------- */
-  const caixaBox = d.querySelector('#editor .ed[data-slot="title"] [data-pick="caps"]');
-  const caixaTrigger = caixaBox.querySelector(".ed__trigger");
-  const caixaLista = caixaBox.querySelector(".ed__list");
+  /* ---------- a lista suspensa é nossa, não do sistema ----------
+     A cobaia era a lista de CAIXA, que saiu do painel na simplificação para uma
+     linha só de controles. O peso é agora a única lista, e serve igual: o que
+     se testa aqui é a máquina — abre, devolve o foco à opção escolhida, Esc
+     fecha só ela, escolher fecha — e não qual propriedade ela governa. */
+  const listaBox = d.querySelector('#editor .ed[data-slot="title"] [data-pick="weight"]');
+  const listaTrigger = listaBox.querySelector(".ed__trigger");
+  const lista = listaBox.querySelector(".ed__list");
+  check("so uma linha de controles por papel",
+    d.querySelectorAll('#editor .ed[data-slot="title"] .ed__ctls').length, 1);
+  check("tres controles nessa linha",
+    d.querySelectorAll('#editor .ed[data-slot="title"] .ed__ctls > *').length, 3);
   check("nao sobrou nenhum select nativo", d.querySelectorAll("#editor select").length, 0);
-  check("a lista nasce fechada", caixaLista.hidden, true);
+  check("a lista nasce fechada", lista.hidden, true);
 
-  caixaTrigger.click();
+  listaTrigger.click();
   await espera(250);
-  check("o gatilho abre a lista", caixaLista.hidden, false);
-  check("e diz que abriu", caixaTrigger.getAttribute("aria-expanded"), "true");
+  check("o gatilho abre a lista", lista.hidden, false);
+  check("e diz que abriu", listaTrigger.getAttribute("aria-expanded"), "true");
   check("o foco cai na opcao escolhida",
     d.activeElement?.getAttribute("aria-selected"), "true");
 
   // Esc fecha a LISTA e para aí: se subisse, recolheria o painel inteiro.
   tecla(d.activeElement, { key: "Escape" });
   await espera(250);
-  check("Esc fecha so a lista", caixaLista.hidden, true);
+  check("Esc fecha so a lista", lista.hidden, true);
   check("e o painel continua aberto", alca.getAttribute("aria-expanded"), "true");
 
-  caixaTrigger.click();
+  listaTrigger.click();
   await espera(250);
-  caixaLista.querySelector('[data-value="upper"]').click();
+  lista.querySelector("[data-value]").click();
   await espera(250);
-  check("caixa alta chega no campo", getComputedStyle(campos[0]).textTransform, "uppercase");
-  check("escolher fecha a lista", caixaLista.hidden, true);
+  check("escolher fecha a lista", lista.hidden, true);
 
   // O peso é o único controle que depende de rede: sem o pedido da face, o
   // navegador engorda o contorno sozinho e a amostra deixa de ser a fonte. O par

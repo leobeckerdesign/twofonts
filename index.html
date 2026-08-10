@@ -47,17 +47,15 @@
        de 150px e vira um card: as duas fontes escritas com o próprio primeiro
        nome, em corpo grande, que é o que se está de fato escolhendo. -->
   <aside id="gallery" aria-label="Pares disponíveis neste recorte">
-    <div id="shelf-wrap">
-      <div id="shelf" role="group" aria-label="Pares disponíveis neste recorte"></div>
-    </div>
-  </aside>
+    <!-- O trilho do corte encabeça a coluna, e é o único elemento dela que não
+         rola: os cards passam POR BAIXO dele. Ficava numa barra própria no
+         rodapé, que existia só para carregá-lo depois que a prateleira subiu
+         para cá — uma faixa de 92px atravessando a tela inteira para segurar um
+         controle de 300px. Agora ele governa a lista de onde a lista está.
 
-  <!-- A barra de baixo ficou só com o dock. O campo ocupa a janela inteira, os
-       cards passam por baixo e quem separa o controle do campo é o degradê. -->
-  <div id="bottom">
-    <!-- Anatomia do `PreviewSlider` do react-bits: trilho como role="slider", com
-         preenchimento, marcas e o cursor na borda do preenchimento. O input nativo
-         saiu porque o desenho pede TEXTO dentro do trilho, o que nenhum
+         Anatomia do `PreviewSlider` do react-bits: trilho como role="slider",
+         com preenchimento, marcas e o cursor na borda do preenchimento. O input
+         nativo saiu porque o desenho pede TEXTO dentro do trilho, o que nenhum
          ::-webkit-slider-* permite; o teclado e o ARIA vêm à mão em controls.ts. -->
     <div id="dock" role="group" aria-label="Controles">
       <div class="scrubber">
@@ -73,7 +71,11 @@
         </div>
       </div>
     </div>
-  </div>
+
+    <div id="shelf-wrap">
+      <div id="shelf" role="group" aria-label="Pares disponíveis neste recorte"></div>
+    </div>
+  </aside>
 
   <!-- Troca de par. Fica calado para o leitor de tela: quem anuncia a mudança é
        o #pair-meta, que é `aria-live` e diz os nomes das duas fontes. -->

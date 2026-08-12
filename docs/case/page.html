@@ -1,4 +1,4 @@
-<title>Como um algoritmo aprende a combinar tipografias</title>
+<title>twofonts — método de pareamento tipográfico</title>
 
 <style>
   @font-face {
@@ -84,6 +84,14 @@
     align-items: start;
   }
 
+  /* A largura mínima automática de um item de grade é o `min-content` dele, e o
+     `min-content` da Fig. 3 é a fórmula, que é `nowrap`. Sem isto a coluna se
+     recusava a encolher abaixo da linha inteira da fórmula e a PÁGINA passava a
+     rolar na horizontal — 416px de conteúdo num quadro de 352. Com `min-width`
+     zerado a coluna cede, e quem rola é a fórmula, por dentro, que é o que o
+     `overflow-x: auto` dela sempre quis fazer. */
+  .band > * { min-width: 0; }
+
   .mark {
     font-size: 0.68rem;
     font-weight: 500;
@@ -155,6 +163,20 @@
     margin: 0;
     letter-spacing: -0.011em;
   }
+
+  /* ---------- assinatura ---------- */
+
+  .byline {
+    margin: 1.7rem 0 0;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    line-height: 1.7;
+    color: var(--ink-faint);
+  }
+
+  .byline b { color: var(--ink); font-weight: 500; }
 
   /* ---------- ficha tecnica ---------- */
 
@@ -676,6 +698,116 @@
     .bar-row { grid-template-columns: 10ch 1fr 4.5ch; }
   }
 
+  /* ---------- telefone ----------
+     A quebra de 860 desmonta a CALHA: tira a coluna de marcação, empilha a
+     página e reduz o respiro. Ela não toca na escala do tipo, e não devia — a
+     860px o corpo de 17px é o corpo certo.
+
+     Num quadro de 390px ele deixa de ser. A medida cai para uns 35 caracteres,
+     e nesse comprimento 17px com entrelinha 1,68 viram sete palavras por linha:
+     o parágrafo cresce para baixo, o olho volta a cada três segundos e a leitura
+     passa a ser rolagem. Aqui a escala inteira desce um degrau — corpo, títulos,
+     legendas e respiros juntos, para a PROPORÇÃO entre eles sobreviver. O que
+     muda é o tamanho da página, não o desenho dela. */
+  @media (max-width: 560px) {
+    body { font-size: 15px; line-height: 1.62; }
+
+    /* O topo NÃO encolhe junto: o botão de fechar do modal flutua sobre esta
+       página, na quina de cima à direita, e ocupa até 48px. Subir o cabeçalho
+       colocaria a linha de olho embaixo dele. */
+    .wrap { padding: 0 1.15rem 3.25rem; }
+    .eyebrow { font-size: 0.62rem; gap: 0.5rem 1rem; margin-bottom: 1.6rem; }
+    h1 { font-size: clamp(1.6rem, 7.6vw, 2.2rem); letter-spacing: -0.035em; margin-bottom: 1.5rem; }
+    .standfirst { font-size: 1.05rem; line-height: 1.5; }
+    .byline { margin-top: 1.35rem; font-size: 0.66rem; letter-spacing: 0.12em; }
+
+    .colophon { margin-top: 2.25rem; grid-template-columns: repeat(2, 1fr); }
+    .colophon div { padding: 0.8rem 0.85rem 0.9rem; }
+    .colophon dt { font-size: 0.58rem; margin-bottom: 0.45rem; }
+    .colophon dd { font-size: 1.2rem; }
+    .colophon dd small { font-size: 0.6rem; margin-top: 0.4rem; }
+
+    section { padding: 3rem 0; }
+    h2 { font-size: clamp(1.22rem, 5.2vw, 1.6rem); margin-bottom: 1.15rem; }
+    .lead { font-size: 1rem; }
+    .aside { font-size: 0.88rem; margin: 1.6rem 0; padding-left: 0.95rem; }
+    figure { margin-top: 2rem; }
+    figcaption { font-size: 0.68rem; margin-top: 0.8rem; }
+
+    /* Quatro colunas no lugar de duas, e quatro porque são OITO amostras: a
+       grade fecha em duas fileiras cheias. Com três sobrava uma célula vazia na
+       última, e vazia ela não some — a folha desenha as divisórias pintando o
+       fundo e deixando 1px de vão, então o buraco aparecia como um retângulo
+       cinza pendurado no canto.
+
+       O glifo cai para 88px e continua legível: é uma grade de seis letras, não
+       um texto, e a Fig. 1 existe para se ver de relance que o modelo só recebe
+       forma. A folha inteira passa de 762px de altura para pouco mais de 230 —
+       de uma tela e meia para um quarto de tela, com as oito à vista de uma vez,
+       que é como a comparação se faz. */
+    .sheet { grid-template-columns: repeat(4, 1fr); }
+    .plate span { font-size: 0.5rem; padding: 0.4rem 0.35rem 0.45rem; letter-spacing: 0; }
+
+    .verdict { margin-top: 2rem; gap: 1.25rem; }
+    .verdict-head { font-size: 0.62rem; padding: 0.7rem 0.8rem; }
+    .verdict-pair figcaption { font-size: 0.58rem; }
+    .verdict p { font-size: 0.84rem; padding: 0.8rem; }
+
+    .map-bar { padding: 0.6rem; gap: 0.4rem; }
+    .chip { font-size: 0.58rem; padding: 0.35rem 0.55rem; gap: 0.4rem; letter-spacing: 0.08em; }
+    .map-count { font-size: 0.58rem; letter-spacing: 0.08em; }
+    /* A leitura do ponto sob o dedo. Encolhe junto, senão a pastilha toma um
+       terço de um mapa que aqui já é pequeno. */
+    .readout { left: 0.55rem; bottom: 0.55rem; padding: 0.45rem 0.55rem; gap: 0.5rem; font-size: 0.64rem; }
+    .readout img { width: 30px; height: 30px; }
+    .readout b { font-size: 0.74rem; }
+
+    .metric { margin-top: 2rem; }
+    .metric-top { padding: 1.1rem 1rem 1.25rem; }
+
+    /* O controle e as duas barras passam a EMPILHAR: rótulo e número dividem a
+       primeira linha, o trilho ocupa a segunda inteira. Lado a lado não cabiam.
+       O trilho do contraste enfileirado com o rótulo e o valor quebrava sozinho
+       por `flex-wrap`, e o "0.00" caía numa linha só dele, alinhado à direita de
+       nada. E as barras davam 8,5ch ao rótulo, o que corta "CONCORDÂNCIA" no
+       meio — a palavra tem doze letras e o trilho começava por cima da nona.
+
+       Empilhado, o trilho ganha a largura toda, que é o que uma barra de
+       proporção precisa para ser lida como proporção, e os dois números ficam
+       onde o olho já os procura: na ponta direita da linha que os nomeia. */
+    .slider-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: baseline;
+      gap: 0.35rem 0.8rem;
+    }
+    .slider-row label { grid-area: 1 / 1; font-size: 0.6rem; letter-spacing: 0.12em; }
+    .cvalue { grid-area: 1 / 2; font-size: 1.5rem; min-width: 0; }
+    .slider-row input[type="range"] { grid-area: 2 / 1 / 3 / 3; width: 100%; }
+
+    .formula { font-size: 0.76rem; margin-top: 1.15rem; padding: 0.7rem 0.8rem; }
+    .bars { margin-top: 1.15rem; gap: 0.95rem; }
+    .bar-row {
+      grid-template-columns: 1fr auto;
+      gap: 0.3rem 0.7rem;
+      font-size: 0.6rem;
+      letter-spacing: 0.06em;
+    }
+    .bar-row span { grid-area: 1 / 1; }
+    .bar-row var { grid-area: 1 / 2; }
+    .bar-row .bar-track { grid-area: 2 / 1 / 3 / 3; }
+    .metric-out { padding: 1rem 1rem 1.2rem; }
+    .roles { font-size: 0.62rem; letter-spacing: 0.08em; margin-bottom: 0.8rem; }
+    .pair-list li { font-size: 0.74rem; padding: 0.6rem 0.75rem; }
+
+    .locks { margin-top: 1.8rem; }
+    .locks li { grid-template-columns: 6ch minmax(0, 1fr); gap: 1rem; padding: 0.9rem 0.2rem; }
+    .locks b { font-size: 0.95rem; }
+    .locks span { font-size: 0.86rem; }
+
+    footer { padding-top: 2.75rem; font-size: 0.72rem; line-height: 1.75; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
   }
@@ -685,14 +817,20 @@
   <header>
     <div class="eyebrow">
       <span>twofonts</span>
-      <span>Processo</span>
+      <span>Método</span>
       <span>Pareamento tipográfico por peso visual</span>
     </div>
-    <h1>Como uma máquina que nunca estudou tipografia aprende a <em>combinar fontes</em></h1>
+    <h1>Pareamento tipográfico medido <em>pela forma das letras</em></h1>
     <p class="standfirst">
-      Renderizei cada fonte do Google Fonts como imagem e deixei um modelo de visão
-      transformar o desenho em números. A métrica separa onde duas fontes concordam
-      de onde discordam. Um controle escolhe qual das duas maximizar.
+      Cada fonte do Google Fonts é renderizada como imagem e convertida em um vetor
+      numérico por um modelo de visão computacional. A métrica separa as dimensões em
+      que duas fontes concordam daquelas em que discordam, e um controle define qual
+      das duas parcelas maximizar.
+    </p>
+
+    <p class="byline">
+      <b>Leo Becker</b>, direção criativa e técnica<br />
+      <b>LBK Media House</b>
     </p>
 
     <dl class="colophon">
@@ -702,7 +840,7 @@
       </div>
       <div>
         <dt>Elegíveis</dt>
-        <dd id="s-eligible">0<small>depois do corte de script e clones</small></dd>
+        <dd id="s-eligible">0<small>após os cortes de script e de clones</small></dd>
       </div>
       <div>
         <dt>Pares</dt>
@@ -710,58 +848,59 @@
       </div>
       <div>
         <dt>Carga</dt>
-        <dd id="s-kb">0 KB<small>o que o navegador realmente baixa</small></dd>
+        <dd id="s-kb">0 KB<small>transferidos pelo navegador</small></dd>
       </div>
     </dl>
   </header>
 
   <section class="band">
-    <div class="mark"><b>01</b>A letra vira imagem</div>
+    <div class="mark"><b>01</b>Da letra à imagem</div>
     <div class="col">
-      <h2>Um computador não lê uma fonte. Ele olha.</h2>
+      <h2>Metadados não descrevem o desenho de uma fonte.</h2>
       <p class="lead">
-        O primeiro problema é que tipografia não é dado. Nome de família, classificação,
-        peso declarado: nada disso descreve o desenho. Duas fontes marcadas como
-        <code>sans-serif 400</code> podem não ter nada em comum.
+        Nome de família, classificação e peso declarado não informam nada sobre a forma
+        das letras. Duas famílias registradas como <code>sans-serif 400</code> podem não
+        ter semelhança visual alguma.
       </p>
       <p>
-        Então cada peso de cada família é renderizado como uma imagem de 224 por 224
+        Cada peso de cada família é então renderizado como uma imagem de 224 por 224
         pixels, preto sobre branco, com duas linhas de letras: <code>aeg</code> e
-        <code>nRQ</code>. A escolha não é aleatória. São as letras que mais denunciam
-        um desenho: a altura-x e o bojo no <strong>a</strong>, o corte do
-        <strong>e</strong>, o descendente do <strong>g</strong>, a junção do
-        <strong>n</strong>, a caixa alta do <strong>R</strong> e a cauda do
-        <strong>Q</strong>, que é praticamente uma assinatura.
+        <code>nRQ</code>. O conjunto reúne os traços que mais diferenciam um desenho: a
+        altura-x e o bojo do <strong>a</strong>, o corte do <strong>e</strong>, o
+        descendente do <strong>g</strong>, a junção do <strong>n</strong>, a caixa alta
+        do <strong>R</strong> e a cauda do <strong>Q</strong>.
       </p>
       <div class="aside">
-        Peso entra como fonte separada. O bold e o light da mesma família viram duas
-        imagens, dois pontos, duas identidades. Se a família fosse tratada como uma
-        média só, o peso visual se perderia justamente na etapa que existe para medi-lo.
+        Cada peso é tratado como uma fonte independente: o bold e o light de uma mesma
+        família geram duas imagens e dois vetores. Reduzir a família a uma média única
+        eliminaria o peso visual na etapa que existe para medi-lo.
       </div>
     </div>
 
     <figure class="full">
       <div class="sheet" id="sheet"></div>
       <figcaption>
-        <b>Fig. 1</b>Oito das 5.669 grades geradas pelo pipeline. É exatamente isto
-        que o modelo recebe: nenhum nome, nenhuma categoria, nenhum metadado. Só a forma.
+        <b>Fig. 1</b>Oito das 5.669 grades geradas pelo pipeline. É o único dado que o
+        modelo recebe: sem nome, sem categoria e sem metadados.
       </figcaption>
     </figure>
   </section>
 
   <section class="band">
-    <div class="mark"><b>02</b>A imagem vira número</div>
+    <div class="mark"><b>02</b>Da imagem ao vetor</div>
     <div class="col">
-      <h2>DINOv2 nunca viu um manual de tipografia.</h2>
+      <h2>A extração usa um modelo de visão genérico.</h2>
       <p class="lead">
-        As imagens passam por um modelo de visão treinado em fotografias do mundo, sem
-        nenhum ajuste para tipografia e sem treino adicional. Ele não sabe o que é uma
-        serifa. Ele só sabe descrever formas.
+        As grades passam por DINOv2, treinado em fotografias, sem ajuste fino para
+        tipografia e sem treino adicional. O modelo não opera com as categorias da
+        disciplina — serifa, eixo, contraste de traço —, apenas descreve a forma
+        registrada na imagem.
       </p>
       <p>
-        Cada grade sai de lá como 384 números, e uma redução leva isso a 200. Esse vetor
-        é a fonte, do ponto de vista da máquina. E a parte interessante é que, mesmo sem
-        nunca ter ouvido a palavra <em>grotesca</em>, ele agrupa as grotescas.
+        Cada grade sai do modelo como 384 números, reduzidos a 200 dimensões. Esse vetor
+        passa a representar a fonte em todas as etapas seguintes. Sem receber qualquer
+        rótulo de classificação, o modelo posiciona famílias de desenho semelhante em
+        regiões próximas do espaço.
       </p>
     </div>
   </section>
@@ -769,16 +908,16 @@
   <section class="band">
     <div class="mark"><b>03</b>O espaço</div>
     <div class="col">
-      <h2>1.221 fontes, organizadas por ninguém.</h2>
+      <h2>1.221 famílias distribuídas sem rótulo de categoria.</h2>
       <p class="lead">
-        Cada fonte agora é um ponto num espaço de 200 dimensões. Achatado em duas para
-        caber na tela, ele vira este mapa. As cores foram adicionadas depois, só para
-        conferência: o modelo nunca soube a que categoria cada fonte pertence.
+        Cada fonte é um ponto em um espaço de 200 dimensões, projetado em duas para
+        exibição. As cores foram atribuídas depois da projeção, apenas para conferência:
+        a categoria declarada no catálogo não entra em nenhuma etapa do cálculo.
       </p>
       <p>
-        Mesmo assim as manuscritas se juntam num canto, as monoespaçadas formam um
-        bolsão, e as display se espalham pelas bordas porque display é exatamente isso,
-        a categoria das fontes que não se parecem com nenhuma outra.
+        Ainda assim, as manuscritas ocupam uma região contígua e as monoespaçadas formam
+        um agrupamento definido. As display se distribuem pelas bordas, resultado
+        esperado de uma categoria que reúne desenhos sem semelhança entre si.
       </p>
     </div>
 
@@ -790,9 +929,10 @@
         <div class="readout" id="readout" hidden></div>
       </div>
       <figcaption>
-        <b>Fig. 2</b>Passe o cursor sobre qualquer ponto. As miniaturas marcam a fonte
-        mais conhecida de cada região do mapa. Clique nas categorias para isolar. É a
-        única peça da página com cor, porque aqui a cor carrega informação.
+        <b>Fig. 2</b>O cursor sobre um ponto identifica a família. As miniaturas marcam
+        a fonte de maior circulação em cada região do mapa, e os botões de categoria
+        isolam subconjuntos. É o único elemento com cor na página, porque aqui a cor
+        codifica dado.
       </figcaption>
     </figure>
   </section>
@@ -800,22 +940,23 @@
   <section class="band">
     <div class="mark"><b>04</b>A métrica</div>
     <div class="col">
-      <h2>Discordar não é o contrário de concordar.</h2>
+      <h2>A métrica separa concordância de discordância.</h2>
       <p class="lead">
-        Aqui está a virada do projeto. Medir semelhança entre dois vetores é trivial:
-        multiplica um pelo outro, soma tudo, sai um número. Parecido ou não.
+        Medir semelhança entre dois vetores é uma operação direta: multiplicam-se as
+        dimensões correspondentes e somam-se os produtos, o que resulta em um único
+        número.
       </p>
       <p>
-        Só que essa soma joga fora uma informação. Ao multiplicar dimensão por dimensão,
-        alguns resultados saem positivos, onde as duas formas <strong>concordam</strong>,
-        e outros saem negativos, onde elas <strong>discordam</strong>. Somar tudo mistura
-        as duas pilhas. Então o algoritmo não soma: ele separa.
+        A soma, porém, descarta informação. Parte dos produtos é positiva, nas dimensões
+        em que as duas formas <strong>concordam</strong>, e parte é negativa, nas
+        dimensões em que <strong>discordam</strong>. Somar o conjunto mistura as duas
+        parcelas, e o algoritmo as mantém separadas.
       </p>
       <p>
-        O controle de contraste é literalmente o peso entre as duas pilhas. E a
-        consequência é o que interessa: um par de contraste máximo não é um par
-        aleatório. Ele foi escolhido por discordar muito, que é coisa bem diferente
-        de concordar pouco. <strong>Brigar bem é uma qualidade mensurável.</strong>
+        O controle de contraste define o peso entre uma parcela e outra. A consequência
+        prática é que um par de contraste máximo não equivale a um par aleatório: ele foi
+        selecionado por <strong>discordância alta</strong>, condição distinta de
+        concordância baixa.
       </p>
     </div>
 
@@ -854,52 +995,53 @@
     </div>
 
     <figcaption class="full">
-      <b>Fig. 3</b>Os pares são reais, lidos do arquivo que o site carrega. Cada faixa
-      guarda 400 pares; aqui aparecem os seis mais bem pontuados de cada uma.
+      <b>Fig. 3</b>Os pares são lidos do mesmo arquivo que o site carrega em produção.
+      Cada faixa armazena 400 pares, e a lista exibe os seis de maior pontuação em cada
+      uma delas.
     </figcaption>
   </section>
 
   <section class="band">
-    <div class="mark"><b>05</b>A curadoria</div>
+    <div class="mark"><b>05</b>As restrições</div>
     <div class="col">
-      <h2>A fórmula levou uma tarde. As exceções levaram o resto.</h2>
+      <h2>As restrições respondem pela maior parte do resultado.</h2>
       <p class="lead">
-        Solta, a métrica entrega lixo convincente. Pedir harmonia máxima faz o
-        algoritmo procurar clones: famílias-irmãs feitas para outro alfabeto têm o
-        latino idêntico e cravam similaridade 1,0000. Tecnicamente perfeito, e um par
-        que não existe.
+        Sem elas, a métrica converge para resultados degenerados. Em harmonia máxima, o
+        algoritmo seleciona clones: famílias irmãs desenhadas para outro alfabeto
+        compartilham o mesmo latino e registram similaridade 1,0000. O resultado é
+        correto pela fórmula e inútil como par tipográfico.
       </p>
       <p>
-        Cada trava abaixo é uma decisão de designer transformada em número. É aqui que
-        mora o projeto, não na fórmula.
+        Cada limite abaixo converte uma decisão de projeto em um valor que o pipeline
+        verifica.
       </p>
       <ul class="locks">
         <li>
           <b>0,965</b>
-          <span>Teto de semelhança. Passa acima de <i>Inter + Figtree</i>, que são
-            legitimamente parecidas em 0,95, e abaixo dos clones.</span>
+          <span>Teto de semelhança. Fica acima de <i>Inter + Figtree</i>, par válido que
+            pontua 0,95, e abaixo da faixa em que aparecem os clones.</span>
         </li>
         <li>
           <b>0,80</b>
-          <span>Mesmo primeiro nome só reprova se também for parecida. Assim
-            <i>Roboto + Roboto Slab</i> sobrevive, porque parear superfamília é
-            técnica legítima, não preguiça.</span>
+          <span>Limite aplicado a famílias de mesmo primeiro nome, reprovadas apenas se
+            também forem semelhantes acima desse valor. <i>Roboto + Roboto Slab</i>
+            permanece, por se tratar de pareamento de superfamília.</span>
         </li>
         <li>
           <b>0,12</b>
-          <span>Peso do viés de popularidade. Baixo de propósito: corrige a tendência
-            do catálogo sem sequestrar a métrica.</span>
+          <span>Peso do viés de popularidade. Corrige a distribuição do catálogo sem
+            dominar a pontuação.</span>
         </li>
         <li>
           <b>4×</b>
-          <span>Limite de aparições por família. Sem ele, uma fonte carismática come
-            a lista inteira.</span>
+          <span>Limite de aparições por família, que impede a concentração da lista em
+            poucos desenhos.</span>
         </li>
         <li>
           <b>4,5:1</b>
-          <span>Contraste mínimo de leitura. Vira uma faixa de luminância que o fundo
-            animado recebe e não consegue furar, então a regra deixou de ser revisão
-            e virou impossibilidade.</span>
+          <span>Contraste mínimo de leitura. Implementado como faixa de luminância
+            imposta ao fundo animado, o que converte a regra em restrição do motor, e
+            não em item de revisão.</span>
         </li>
       </ul>
     </div>
@@ -909,16 +1051,20 @@
     <div class="mark">Colofão</div>
     <div class="col">
       <p>
-        Composta em <b>Geist</b>, uma das 1.223 famílias que o próprio algoritmo pareia.
-        A página inteira é acromática de propósito: a única cor está no mapa da Fig. 2,
-        onde ela codifica categoria e portanto é dado, não enfeite.
+        <b>twofonts</b> foi desenvolvido pela <b>LBK Media House</b>, sob direção criativa
+        e técnica de <b>Leo Becker</b>. O método de embeddings e a métrica de pareamento
+        derivam de <a href="https://github.com/Jack000/fontjoy">Fontjoy</a>, de Jack000,
+        publicado sob licença MIT.
       </p>
       <p>
-        Método de embeddings e métrica de pareamento derivados de
-        <a href="https://github.com/Jack000/fontjoy">Jack000/fontjoy</a> (MIT).
         Extração com DINOv2 ViT-S/14. Projeção do mapa com UMAP, calculada a partir dos
         mesmos vetores de 200 dimensões que alimentam o pareamento. As duas famílias de
         diferença entre as elegíveis e as plotadas não têm peso regular no catálogo.
+      </p>
+      <p>
+        Composta em <b>Geist</b>, uma das 1.223 famílias elegíveis do próprio catálogo.
+        A página é acromática: a única cor está no mapa da Fig. 2, onde codifica
+        categoria e constitui dado.
       </p>
     </div>
   </footer>
@@ -966,13 +1112,13 @@
         title: "Concordam",
         c: "contraste 0.00",
         pair: ["Figtree", "Google Sans"],
-        note: "Mesma altura-x, mesma tensão nos terminais, mesmo esqueleto. A soma positiva é alta, e num contraste baixo é isso que a métrica premia.",
+        note: "Mesma altura-x, mesma tensão nos terminais e mesma estrutura de traço. A parcela de concordância é alta, e é ela que a métrica maximiza em contraste baixo.",
       },
       {
         title: "Discordam",
         c: "contraste 1.00",
         pair: ["Azeret Mono", "Bitter"],
-        note: "Largura fixa contra largura variável, terminal reto contra serifa pesada. Discordam em quase toda dimensão, e é exatamente por isso que sobem no topo do ranking.",
+        note: "Largura fixa contra largura variável, terminal reto contra serifa pesada. A discordância se distribui pela maior parte das dimensões, o que leva o par ao topo da faixa de contraste máximo.",
       },
     ];
 
@@ -1075,17 +1221,38 @@
     let hovered = null;
     let reveal = 0;
 
+    /**
+     * Quantos pixels de CANVAS cabem num pixel de tela.
+     *
+     * O mapa é desenhado numa grade fixa de 1600×900 e exibido na largura que
+     * couber: no desktop quase um para um, num telefone um quarto disso. Tudo o
+     * que é desenhado aqui está em unidades de canvas, então sem este fator a
+     * camada de anotação encolhe junto com a caixa — o nome da fonte chegava à
+     * tela com 3px de altura e a miniatura com 12, que é o tamanho em que uma
+     * legenda deixa de ser legenda e vira textura.
+     *
+     * As medidas abaixo são então declaradas em pixels de TELA e multiplicadas
+     * por ele. Os números saem dos valores antigos divididos pela escala do
+     * desktop (1,436), então lá o desenho continua o mesmo ao pixel; no telefone
+     * é a anotação que cresce, e o espaçamento mínimo entre duas legendas cresce
+     * com ela — senão o mapa ganharia rótulos legíveis empilhados uns sobre os
+     * outros, que é o mesmo problema com outra aparência.
+     */
+    const escala = () => W / (canvas.getBoundingClientRect().width || W);
+
     function draw() {
       const plate = cssVar("--plate");
       const rule = cssVar("--rule");
       const ink = cssVar("--ink");
       const faint = cssVar("--ink-faint");
+      const k = escala();
 
       ctx.fillStyle = plate;
       ctx.fillRect(0, 0, W, H);
 
       ctx.strokeStyle = rule;
-      ctx.lineWidth = 1;
+      // `max` com o valor antigo: no desktop a conta dá 1,005 e nada muda.
+      ctx.lineWidth = Math.max(1, 0.7 * k);
       for (let i = 1; i < 6; i++) {
         const x = PAD + (i / 6) * (W - PAD * 2);
         const y = PAD + (i / 6) * (H - PAD * 2);
@@ -1106,7 +1273,10 @@
         ctx.fillStyle = colorOf(p.c);
         ctx.globalAlpha = p === hovered ? 1 : 0.66;
         ctx.beginPath();
-        ctx.arc(x, y, p === hovered ? 8 : 3.4, 0, Math.PI * 2);
+        // O ponto cresce MENOS que a anotação. Ele não é um rótulo: são 1.221
+        // deles, e escalá-los na mesma proporção faria a nuvem virar mancha
+        // justamente na tela onde ela já é pequena. O piso é o valor do desktop.
+        ctx.arc(x, y, p === hovered ? Math.max(8, 3.8 * k) : Math.max(3.4, 1.6 * k), 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
@@ -1114,28 +1284,54 @@
       if (reveal >= 0.999) {
         // miniaturas ja desenhadas, para nao empilhar rotulo sobre rotulo
         const placed = [];
+        // Medidas em pixels de TELA, convertidas para canvas na hora de usar.
+        const S = 39 * k;          // lado da miniatura
+        const corpo = 9 * k;       // corpo do rótulo
+        const gancho = 7 * k;      // recuo da miniatura e comprimento do fio
+        const base = 9.75 * k;     // linha de base do rótulo, abaixo do ponto
+        const vaoX = 104.5 * k;    // espaçamento mínimo entre duas legendas
+        const vaoY = 66.9 * k;
         for (const [fam, img] of thumbs) {
           const p = space.find((s) => s.f === fam);
           if (!p || !active.has(p.c) || !img.complete) continue;
           const [x, y] = px(p);
-          const S = 56;
-          if (placed.some(([px_, py_]) => Math.abs(px_ - x) < 150 && Math.abs(py_ - y) < 96)) continue;
+          if (placed.some(([px_, py_]) => Math.abs(px_ - x) < vaoX && Math.abs(py_ - y) < vaoY)) continue;
           placed.push([x, y]);
+
+          // A legenda VIRA quando não cabe. Ela nascia sempre acima e à direita
+          // do ponto, o que funcionava enquanto a miniatura media 56 de 1600 —
+          // um trigésimo da largura, e o ponto teria de estar colado na borda
+          // para estourar. Agora ela mede o mesmo tanto EM TELA, o que num
+          // telefone são 178 unidades de canvas: qualquer fonte da margem
+          // direita, e a nuvem tem várias, saía cortada pelo quadro. Escolher o
+          // lado pelo espaço que existe é o que mantém a anotação inteira sem
+          // mexer em onde o ponto está, que é o dado.
+          const paraDireita = x + gancho + S <= W;
+          const paraCima = y - S - gancho >= 0;
+          const ax = paraDireita ? x + gancho : x - gancho - S;
+          const ay = paraCima ? y - S - gancho : y + gancho;
+
           ctx.save();
           ctx.filter = "invert(1)";
-          ctx.drawImage(img, x + 10, y - S - 10, S, S);
+          ctx.drawImage(img, ax, ay, S, S);
           ctx.restore();
           ctx.strokeStyle = faint;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x + 10.5, y - S - 9.5, S, S);
+          ctx.lineWidth = Math.max(1, 0.7 * k);
+          ctx.strokeRect(ax, ay, S, S);
+          // O fio sai do ponto e chega à quina da miniatura que está voltada
+          // para ele, seja qual for o lado que ela tenha tomado.
           ctx.beginPath();
           ctx.moveTo(x, y);
-          ctx.lineTo(x + 10, y - 10);
+          ctx.lineTo(paraDireita ? ax : ax + S, paraCima ? ay + S : ay);
           ctx.stroke();
 
           ctx.fillStyle = ink;
-          ctx.font = '500 13px Geist, system-ui, sans-serif';
-          ctx.fillText(fam, x + 10, y + 14);
+          ctx.font = `500 ${corpo.toFixed(1)}px Geist, system-ui, sans-serif`;
+          ctx.textAlign = paraDireita ? "left" : "right";
+          // O rótulo acompanha o lado da miniatura, e a linha de base recua para
+          // dentro quando o ponto está no pé do quadro.
+          ctx.fillText(fam, paraDireita ? ax : x - gancho, Math.min(y + base, H - gancho));
+          ctx.textAlign = "left";
         }
       }
 
@@ -1159,6 +1355,12 @@
 
     // redesenha quando as faces embutidas terminam de carregar
     if (document.fonts) document.fonts.ready.then(draw);
+
+    // A caixa muda de largura quando a janela muda — e esta página vive dentro
+    // de um `<iframe>` que acompanha o modal, então girar o aparelho muda a
+    // escala do mapa. Sem redesenhar, a anotação ficaria dimensionada para a
+    // largura anterior.
+    addEventListener("resize", draw);
 
     canvas.addEventListener("pointermove", (e) => {
       const rect = canvas.getBoundingClientRect();

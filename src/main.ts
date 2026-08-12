@@ -8,6 +8,7 @@ import type { AppState, FontMeta, PairsData } from "./types";
 import { initCase, modalAberto } from "./ui/case";
 import { CONTRAST_STEPS, Controls, stepToContrast } from "./ui/controls";
 import { Editor } from "./ui/editor";
+import { Gallery } from "./ui/gallery";
 import { Shelf } from "./ui/shelf";
 import { decodeState, encodeState } from "./url-state";
 
@@ -58,6 +59,19 @@ async function boot(): Promise<void> {
   const controls = new Controls();
   const shelf = new Shelf(document.getElementById("shelf")!);
   const editor = new Editor(weightRoles(data, state.contrast));
+  const gallery = new Gallery();
+
+  // Os dois painéis se excluem — mas só onde é preciso. No celular o editor mede
+  // 86vw e a vitrine 84vw: abertos juntos, o de cima esconderia o de baixo por
+  // inteiro, e a lombada do escondido ficaria por trás de um painel opaco, sem
+  // como fechá-lo. No desktop os dois convivem, e é por isso que a exclusão
+  // pergunta ao `collapsible` em vez de valer sempre.
+  //
+  // A ida e a volta não se retroalimentam: `toggle` sai na porta quando o estado
+  // pedido já é o atual, então o fechamento disparado por uma abertura não
+  // dispara nada de volta.
+  gallery.onToggle = (open) => { if (open) editor.toggle(false); };
+  editor.onToggle = (open) => { if (open && gallery.collapsible) gallery.toggle(false); };
 
   // Lista de pares do corte ativo e onde estamos nela: as setas caminham por
   // aqui, e é a mesma lista que a prateleira exibe.

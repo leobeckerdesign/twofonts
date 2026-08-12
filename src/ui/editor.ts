@@ -119,6 +119,13 @@ function required<T extends HTMLElement>(id: string): T {
 }
 
 export class Editor {
+  /**
+   * Avisa quem precisa reagir à abertura. No celular o editor e a vitrine somam
+   * mais que a largura da tela, então quem abre um fecha o outro — e quem ata as
+   * duas pontas é o `main`, porque nenhum dos dois deve conhecer o outro.
+   */
+  onToggle: ((open: boolean) => void) | null = null;
+
   private readonly panel = required("editor");
   private readonly body = required("editor-body");
   private readonly handle = required<HTMLButtonElement>("editor-handle");
@@ -330,6 +337,7 @@ export class Editor {
     if (open) {
       this.panel.querySelector<HTMLElement>(".ed__text")?.focus();
     }
+    this.onToggle?.(open);
   }
 
   /**

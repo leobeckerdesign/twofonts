@@ -55,33 +55,56 @@
        de 150px e vira um card: as duas fontes escritas com o próprio primeiro
        nome, em corpo grande, que é o que se está de fato escolhendo. -->
   <aside id="gallery" aria-label="Pares disponíveis neste recorte">
-    <!-- O trilho do corte encabeça a coluna, e é o único elemento dela que não
-         rola: os cards passam POR BAIXO dele. Ficava numa barra própria no
-         rodapé, que existia só para carregá-lo depois que a prateleira subiu
-         para cá — uma faixa de 92px atravessando a tela inteira para segurar um
-         controle de 300px. Agora ele governa a lista de onde a lista está.
+    <!-- A lombada da vitrine, e o gêmeo da do editor: mesma largura (`--rail`),
+         mesma pegada, mesmo desenho. No DESKTOP ela não existe — a coluna é fixa
+         e uma alça para fechar o que ninguém pediu para fechar seria um controle
+         a mais na tela. No celular a coluna vira gaveta: 320px de vitrine sobre
+         390px de tela não podem ficar abertos por padrão, senão o palco — que é
+         o que o app mostra — nasce coberto.
 
-         Anatomia do `PreviewSlider` do react-bits: trilho como role="slider",
-         com preenchimento, marcas e o cursor na borda do preenchimento. O input
-         nativo saiu porque o desenho pede TEXTO dentro do trilho, o que nenhum
-         ::-webkit-slider-* permite; o teclado e o ARIA vêm à mão em controls.ts. -->
-    <div id="dock" role="group" aria-label="Controles">
-      <div class="scrubber">
-        <div id="contrast" class="scrubber__track" role="slider" tabindex="0"
-             aria-label="Contraste de medida entre título e texto"
-             aria-valuemin="1" aria-valuemax="10" aria-valuenow="6">
-          <!-- Marcas ANTES do preenchimento: assim ele as cobre, e elas só
-               aparecem no vão que falta — como no original. -->
-          <div class="scrubber__ticks" aria-hidden="true"></div>
-          <div class="scrubber__fill" aria-hidden="true"></div>
-          <div class="scrubber__thumb" aria-hidden="true"></div>
-          <div id="contrast-value" class="scrubber__value num" aria-hidden="true">6/10</div>
+         Ela vem ANTES do corpo porque fica na borda ESQUERDA do painel, que é a
+         borda de dentro: recolhida, a lombada é a única coisa à vista; aberta,
+         é a alça que fecha. Uma só, no mesmo lugar — como na esquerda. -->
+    <button id="gallery-handle" class="gallery__handle" type="button"
+            aria-expanded="false" aria-controls="gallery-body">
+      <span class="gallery__grip" aria-hidden="true"></span>
+      <span class="gallery__handle-label">pares</span>
+    </button>
+
+    <!-- O corpo existe para DUAS coisas: dar ao `inert` um alvo só quando a
+         gaveta fecha, e ser o bloco contra o qual o `#dock` se posiciona. Sem
+         ele o trilho se mediria pelo `#gallery`, e no celular nasceria por baixo
+         da lombada — com o corpo, o recuo da lombada já está descontado e o
+         `left` do trilho continua sendo o mesmo respiro dos cards. -->
+    <div id="gallery-body" class="gallery__body">
+      <!-- O trilho do corte encabeça a coluna, e é o único elemento dela que não
+           rola: os cards passam POR BAIXO dele. Ficava numa barra própria no
+           rodapé, que existia só para carregá-lo depois que a prateleira subiu
+           para cá — uma faixa de 92px atravessando a tela inteira para segurar um
+           controle de 300px. Agora ele governa a lista de onde a lista está.
+
+           Anatomia do `PreviewSlider` do react-bits: trilho como role="slider",
+           com preenchimento, marcas e o cursor na borda do preenchimento. O input
+           nativo saiu porque o desenho pede TEXTO dentro do trilho, o que nenhum
+           ::-webkit-slider-* permite; o teclado e o ARIA vêm à mão em controls.ts. -->
+      <div id="dock" role="group" aria-label="Controles">
+        <div class="scrubber">
+          <div id="contrast" class="scrubber__track" role="slider" tabindex="0"
+               aria-label="Contraste de medida entre título e texto"
+               aria-valuemin="1" aria-valuemax="10" aria-valuenow="6">
+            <!-- Marcas ANTES do preenchimento: assim ele as cobre, e elas só
+                 aparecem no vão que falta — como no original. -->
+            <div class="scrubber__ticks" aria-hidden="true"></div>
+            <div class="scrubber__fill" aria-hidden="true"></div>
+            <div class="scrubber__thumb" aria-hidden="true"></div>
+            <div id="contrast-value" class="scrubber__value num" aria-hidden="true">6/10</div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div id="shelf-wrap">
-      <div id="shelf" role="group" aria-label="Pares disponíveis neste recorte"></div>
+      <div id="shelf-wrap">
+        <div id="shelf" role="group" aria-label="Pares disponíveis neste recorte"></div>
+      </div>
     </div>
   </aside>
 
@@ -100,14 +123,14 @@
        que impede os dois de se contaminarem. O `src` entra só na primeira
        abertura — são 294KB que ninguém deve pagar sem pedir. -->
   <button id="case-open" class="case-open" type="button"
-          aria-haspopup="dialog" aria-label="Como o pareamento funciona">?</button>
+          aria-haspopup="dialog" aria-label="Método de pareamento tipográfico">?</button>
 
-  <dialog id="case" class="case" aria-label="Como o pareamento funciona">
+  <dialog id="case" class="case" aria-label="Método de pareamento tipográfico">
     <button id="case-close" class="case__close" type="button" aria-label="Fechar">
       <span aria-hidden="true">×</span>
     </button>
     <iframe id="case-frame" class="case__frame"
-            title="Como o algoritmo pareia tipografias"></iframe>
+            title="Método de pareamento tipográfico"></iframe>
   </dialog>
 
   <div id="busy" aria-hidden="true"><span class="busy__ring"></span></div>

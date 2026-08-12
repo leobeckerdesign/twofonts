@@ -279,9 +279,17 @@ body {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 30px), transparent);
 }
 
-/* A lombada é o botão inteiro, e fica na borda DIREITA do painel: recolhido ela
-   é a única coisa visível; aberto, é a alça que fecha. Uma só, no mesmo lugar. */
-.editor__handle {
+/* A lombada é o botão inteiro, e fica na borda de DENTRO do painel: recolhido
+   ela é a única coisa visível; aberto, é a alça que fecha. Uma só, no mesmo
+   lugar.
+
+   O desenho é declarado uma vez para os dois painéis. A vitrine ganhou lombada
+   no celular, e duas lombadas com a mesma função e desenhos que derivam com o
+   tempo são o começo de duas interfaces dentro da mesma tela. A única diferença
+   entre elas é de qual borda encostam, e isso é o `flex` de cada painel que
+   resolve — não estas regras. */
+.editor__handle,
+.gallery__handle {
   flex: none; width: var(--rail);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; padding: 0; border: 0;
@@ -289,16 +297,21 @@ body {
   font: inherit; font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
   cursor: pointer; transition: background .22s ease, color .22s ease;
 }
-.editor__handle:hover { background: var(--surface); color: var(--paper); }
-.editor__handle:focus-visible { outline: 1px solid var(--paper); outline-offset: -3px; }
-.editor__handle-label { writing-mode: vertical-rl; transform: rotate(180deg); }
+.editor__handle:hover,
+.gallery__handle:hover { background: var(--surface); color: var(--paper); }
+.editor__handle:focus-visible,
+.gallery__handle:focus-visible { outline: 1px solid var(--paper); outline-offset: -3px; }
+.editor__handle-label,
+.gallery__handle-label { writing-mode: vertical-rl; transform: rotate(180deg); }
 /* Três traços: a pegada de sempre, sem precisar de ícone importado. */
-.editor__grip {
+.editor__grip,
+.gallery__grip {
   width: 13px; height: 9px;
   border-top: 1px solid currentColor; border-bottom: 1px solid currentColor;
   position: relative;
 }
-.editor__grip::after {
+.editor__grip::after,
+.gallery__grip::after {
   content: ""; position: absolute; left: 0; top: 4px;
   width: 100%; height: 1px; background: currentColor;
 }
@@ -521,6 +534,10 @@ body {
   background: rgba(10, 10, 10, .74); backdrop-filter: blur(6px);
   font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
   color: var(--muted); opacity: .9; pointer-events: none;
+  /* Uma linha, sempre. Sem `right`, a pastilha se mede pelo que sobra da janela
+     depois do `left` — e a 320px isso a estreitava o bastante para a frase
+     quebrar em duas, virando um bloco onde o desenho pede um rótulo. */
+  white-space: nowrap;
   transition: opacity .5s ease;
 }
 #hint.is-gone { opacity: 0; }
@@ -542,6 +559,20 @@ body {
   pointer-events: none;
 }
 #gallery > * { pointer-events: auto; }
+
+/* O corpo da coluna. No desktop ele é a coluna inteira, e a geometria é a mesma
+   de quando `#dock` e `#shelf-wrap` eram filhos diretos: `position: relative`
+   apenas transfere para cá o papel de bloco de referência do trilho. No celular
+   ele é o que sobra depois da lombada — e por isso o trilho não precisa saber
+   que a lombada existe. */
+#gallery-body {
+  position: relative; flex: 1; min-width: 0; display: flex;
+}
+
+/* A lombada da vitrine só existe no celular. Na tela grande a coluna é fixa, e
+   uma alça para recolher o que não atrapalha seria um controle a mais pedindo
+   atenção — o editor recolhe porque é um cartão de edição, a vitrine não. */
+.gallery__handle { display: none; }
 
 /* Mesma decisão da barra de baixo, girada 90°: os cards são escuros e o campo
    rola cards BRANCOS por trás deles; sem preto por baixo os dois viram a mesma
@@ -893,6 +924,12 @@ body {
 }
 
 @media (max-width: 720px) {
+  /* O par de nomes para ANTES da lombada. Alinhado à direita com o recuo de
+     sempre, ele terminava 22px por dentro dela: o nome cruzava a borda vertical
+     da alça e as últimas letras caíam sobre outra superfície. Os dois tons são
+     claros sobre escuro, então nada sumia — mas a linha passando por cima de uma
+     quina é o tipo de coisa que se lê como desalinho antes de se entender. */
+  #topbar { padding-right: calc(var(--rail) + 14px); }
   #pair-meta { font-size: 9px; }
   /* Proporcionalmente, o dobro da tela grande não é o dobro da pequena: 56px de
      marca numa tela de 430 tomam um oitavo da largura. */
@@ -904,20 +941,98 @@ body {
   .ed--title .ed__text, .ed--body .ed__ctls { margin-top: 20px; }
   .ed__ctls { gap: 8px; }
   .scrubber__value { right: 14px; font-size: 11px; }
-  #hint { bottom: 20px; }
-  /* A coluna vira uma faixa: 25vw de 390px são 98px, que não é card nenhum.
-     Mais da metade da tela para a vitrine é caro, mas o campo continua legível
-     por baixo do véu — e é a vitrine que está em foco quando se olha para cá. */
+  /* A dica se centrava no CAMPO descontando a vitrine, que aqui não ocupa mais
+     lugar fixo: a coluna virou gaveta. Agora ela se centra no vão ENTRE as duas
+     coisas presas ao rodapé — a borda direita do botão do case (26px de recuo
+     mais 38px de botão) e a borda esquerda da lombada. Centrada no campo inteiro
+     ela encostava no botão a 320px de tela, que é onde o vão é mais curto, e
+     duas pastilhas se tocando na mesma quina leem como uma peça quebrada.
+
+     E ela passa para TRÁS da vitrine. Acima dela, a dica ficava boiando sobre os
+     cards da gaveta aberta, dizendo "role para navegar" em cima de uma lista que
+     não é o campo. Atrás, a gaveta a cobre enquanto está aberta e a devolve ao
+     fechar, sem uma linha de JavaScript — recolhida, a coluna está fora da tela
+     e não há o que cobrir. */
+  #hint {
+    bottom: 20px; z-index: 15;
+    left: calc((26px + 38px + 100% - var(--rail)) / 2);
+  }
+
+  /* A coluna vira GAVETA, e a largura passa a incluir a lombada: 320px de painel
+     são 272 de vitrine mais os 48 da alça. Aberta ela come 82% da tela, o que só
+     se paga porque ela agora abre por decisão de quem usa — fixa nessa medida,
+     nasceria cobrindo o palco, que é o que o app existe para mostrar.
+
+     `--card-w` desconta a lombada junto com os respiros: ela não é margem, é
+     largura tomada, e sem isso o card nasceria com 48px a mais do que cabe. */
   :root {
-    --gallery-w: min(62vw, 268px);
+    --gallery-w: min(78vw, 300px);
     --gallery-pad: 14px;
     --gallery-lens: 16px;
+    --card-w: calc(var(--gallery-w) - var(--rail) - var(--gallery-pad) - var(--gallery-lens));
     --dock-top: 50px;
     --dock-h: 46px;
   }
+
+  .gallery__handle { display: flex; }
+
+  /* Mesma mecânica do editor, espelhada: largura fixa, deslocada para FORA por
+     `transform`, e abrir é trazer ao zero. Uma transformada só — a coluna rola
+     uma lista de cards com fontes carregando, e animar largura aqui seria
+     remedir cada card a cada quadro. */
+  #gallery {
+    transform: translateX(calc(100% - var(--rail)));
+    transition: transform .34s var(--ease-out);
+    will-change: transform;
+  }
+  #gallery.is-open {
+    transform: translateX(0);
+    transition: transform .52s var(--ease-in);
+  }
+
+  /* A gaveta ganha FUNDO. No desktop a coluna é translúcida de propósito: são
+     356px de 1440, o campo continua vivo por trás e o véu em degradê basta para
+     os cards escuros se destacarem. Aqui o painel cobre 82% da tela, e o mesmo
+     véu deixava o palco inteiro aparecendo entre um card e outro — duas
+     composições disputando a mesma área, e a lista deixando de ser uma lista.
+
+     `--bg` e não uma cor nova: é exatamente o fundo do cartão do editor na borda
+     oposta, e os dois painéis são a mesma peça girada. A lombada continua um
+     degrau acima (`--surface-sunken`), como lá. */
+  #gallery-body { background: var(--bg); }
+
+  /* O véu sobrevive só pelo que ESCAPA do painel: os 132px à esquerda, que
+     dissolvem a borda da gaveta no campo em vez de terminarem em reta. Por baixo
+     do corpo ele virou redundante — mas é ele que impede a quina viva.
+     Recolhida, a faixa viajaria junto e deixaria uma sombra colada na lombada
+     sem nada dentro. */
+  #gallery::before { opacity: 0; transition: opacity .3s ease; }
+  #gallery.is-open::before { opacity: 1; }
+
+  /* O card encolhe nas DUAS dimensões. A largura vem de graça, de `--gallery-w`:
+     `--card-w` deriva dela, e a amostra deriva de `--card-w`. O que não vinha
+     junto era a proporção — a 12,5% da largura a palavra tomava a altura toda do
+     card e a coluna virava uma pilha de blocos de texto, sem o respiro que faz
+     cada um se ler como uma peça. O fator cai para 11,2% e o teto acompanha, e é
+     esse vão recuperado que devolve mais um par à tela sem apertar nada. */
+  /* O case vira FOLHA, e não mais um cartão flutuante. A 92vw × 88vh o quadro
+     media 352 × 743 dentro de 390 × 844: 38px de moldura de cada lado, tomados
+     de uma página que é um artigo de 9.000px e que já estava com a medida curta.
+     A moldura não dizia nada que o escurecimento do fundo não diga — ela só
+     estreitava a coluna de texto.
+
+     Sem cantos: um retângulo arredondado ocupando a tela inteira desenha quatro
+     falhas nas quinas, e não uma folha. */
+  .case {
+    width: 100vw; height: 100dvh;
+    max-width: none; max-height: none;
+    border-radius: 0;
+  }
+
   #shelf { padding-bottom: 18px; gap: 10px; }
-  .chip { padding: 16px 18px 15px; border-radius: 18px; }
-  .chip__pair { margin-top: 11px; font-size: 8.5px; letter-spacing: .1em; }
+  .chip { padding: 14px 16px 13px; border-radius: 16px; }
+  .chip__word { font-size: clamp(21px, calc(var(--card-w) * .112), 30px); }
+  .chip__pair { margin-top: 10px; font-size: 8.5px; letter-spacing: .1em; }
 }
 
 @media (prefers-reduced-motion: reduce) {

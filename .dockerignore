@@ -1,0 +1,27 @@
+# O contexto é enviado inteiro ao daemon antes do primeiro `RUN`. Sem isto, o
+# `.venv` do pipeline sozinho são 425MB atravessando o socket a cada build.
+
+.venv/
+node_modules/
+dist/
+.git/
+.github/
+.superpowers/
+
+# O pipeline de ML gera `docs/case/data/`, que É versionado justamente para o
+# build não depender dele. Nada aqui é lido durante o `npm run build`.
+pipeline/
+
+# Sondas de desenvolvimento: páginas soltas que abrem no navegador à mão.
+scripts/*.html
+shader-lab.html
+
+# Documentação e planos não entram na imagem — com UMA exceção, `docs/case/`,
+# que carrega o gerador da página do case e os dados dele. Por isso o padrão
+# nega o diretório e a linha seguinte devolve o que o build precisa.
+docs/
+!docs/case/
+
+Dockerfile
+.dockerignore
+README.md
